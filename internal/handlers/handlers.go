@@ -19,12 +19,16 @@ import (
 type Store struct {
 	mu      sync.RWMutex
 	items   map[string]models.Item
+	users   map[string]models.User
 	counter int
 }
 
 // NewStore returns an initialised, empty store.
 func NewStore() *Store {
-	return &Store{items: make(map[string]models.Item)}
+	return &Store{
+		items: make(map[string]models.Item),
+		users: make(map[string]models.User),
+	}
 }
 
 // nextID generates a simple sequential string ID.
