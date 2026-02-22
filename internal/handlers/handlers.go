@@ -70,9 +70,17 @@ func (h *Handler) ListItems(c *gin.Context) {
 	h.store.mu.RLock()
 	defer h.store.mu.RUnlock()
 
+	var mostRecent time.Time
 	responses := make([]models.ItemResponse, 0, len(h.store.items))
 	for _, item := range h.store.items {
 		responses = append(responses, toResponse(item))
+		if item.UpdatedAt.After(mostRecent) {
+			mostRecent = item.UpdatedAt
+		}
+	}
+
+	if !mostRecent.IsZero() {
+		c.Header("Last-Modified", mostRecent.UTC().Format(http.TimeFormat))
 	}
 
 	c.JSON(http.StatusOK, models.ItemsResponse{
@@ -98,6 +106,7 @@ func (h *Handler) GetItem(c *gin.Context) {
 		return
 	}
 
+	c.Header("Last-Modified", item.UpdatedAt.UTC().Format(http.TimeFormat))
 	c.JSON(http.StatusOK, toResponse(item))
 }
 
