@@ -5,6 +5,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"log"
 	"os"
 
@@ -17,10 +19,22 @@ func main() {
 		port = "8080"
 	}
 
-	r := router.New()
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		// Generate a random secret for development
+		randomBytes := make([]byte, 32)
+		if _, err := rand.Read(randomBytes); err != nil {
+			log.Fatalf("failed to generate random JWT secret: %v", err)
+		}
+		jwtSecret = base64.StdEncoding.EncodeToString(randomBytes)
+		log.Println("WARNING: Using randomly generated JWT_SECRET. Set JWT_SECRET environment variable in production.")
+	}
+
+	r := router.New(jwtSecret)
 
 	log.Printf("Starting server on :%s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
+
