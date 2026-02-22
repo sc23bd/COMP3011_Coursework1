@@ -12,7 +12,7 @@ type User struct {
 // RegisterRequest is the payload for creating a new user account.
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=50"`
-	Password string `json:"password" binding:"required,min=6,max=100"`
+	Password string `json:"password" binding:"required,min=8,max=128"`
 }
 
 // LoginRequest is the payload for authenticating a user.
