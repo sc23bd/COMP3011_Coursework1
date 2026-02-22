@@ -36,19 +36,21 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Hash password before acquiring the lock to avoid holding it during the
+	// slow bcrypt operation. The lock below still covers both the existence
+	// check and the insertion atomically, preventing any TOCTOU race.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
+		return
+	}
+
 	h.store.mu.Lock()
 	defer h.store.mu.Unlock()
 
 	// Check if username already exists
 	if _, exists := h.store.users[req.Username]; exists {
 		c.JSON(http.StatusConflict, models.ErrorResponse{Error: "username already exists"})
-		return
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
 		return
 	}
 
