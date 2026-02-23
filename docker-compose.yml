@@ -19,7 +19,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: "postgres://comp3011:comp3011@db:5432/comp3011?sslmode=disable"
+      DATABASE_URL: "postgres://${db_user}:${db_password}@db:5432/${db_name}?sslmode=disable"
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"

@@ -1,5 +1,5 @@
 # Dockerfile
-FROM golang:1.25-alpine
+FROM golang:1.26-alpine
 
 WORKDIR /app
 COPY go.mod go.sum ./
