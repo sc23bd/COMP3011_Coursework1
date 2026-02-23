@@ -53,7 +53,9 @@ func New(jwtSecret string) *gin.Engine {
 		{
 			// Public read endpoints (no auth required)
 			items.GET("", h.ListItems)
+			items.HEAD("", h.ListItems)
 			items.GET("/:id", h.GetItem)
+			items.HEAD("/:id", h.GetItem)
 
 			// Protected mutation endpoints (JWT required)
 			items.POST("", middleware.JWTAuth(jwtService), h.CreateItem)
