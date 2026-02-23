@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 
+	dbpkg "github.com/sc23bd/COMP3011_Coursework1/internal/db"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/router"
 )
 
@@ -34,11 +35,24 @@ func main() {
 		}
 	}
 
-	r := router.New(jwtSecret)
+	// Connect to PostgreSQL when DATABASE_URL is provided; otherwise the
+	// router falls back to the in-memory store (useful for local development
+	// and tests without a running database).
+	db, err := dbpkg.ConnectFromEnv()
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	if db != nil {
+		log.Println("Connected to PostgreSQL database")
+		defer db.Close()
+	} else {
+		log.Println("No DATABASE_URL set — using in-memory store")
+	}
+
+	r := router.New(jwtSecret, db)
 
 	log.Printf("Starting server on :%s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
-

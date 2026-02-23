@@ -4,8 +4,8 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
@@ -15,14 +15,14 @@ import (
 
 // AuthHandler holds dependencies for authentication endpoints.
 type AuthHandler struct {
-	store      *Store
+	users      UserRepository
 	jwtService *auth.JWTService
 }
 
 // NewAuthHandler constructs an AuthHandler.
-func NewAuthHandler(store *Store, jwtService *auth.JWTService) *AuthHandler {
+func NewAuthHandler(users UserRepository, jwtService *auth.JWTService) *AuthHandler {
 	return &AuthHandler{
-		store:      store,
+		users:      users,
 		jwtService: jwtService,
 	}
 }
@@ -36,34 +36,26 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// Hash password before acquiring the lock to avoid holding it during the
-	// slow bcrypt operation. The lock below still covers both the existence
-	// check and the insertion atomically, preventing any TOCTOU race.
+	// Hash password before calling the repository so the slow bcrypt
+	// operation does not block any shared resource (lock, connection, etc.).
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
 		return
 	}
 
-	h.store.mu.Lock()
-	defer h.store.mu.Unlock()
-
-	// Check if username already exists
-	if _, exists := h.store.users[req.Username]; exists {
+	user, err := h.users.CreateUser(req.Username, string(hashedPassword))
+	if errors.Is(err, models.ErrConflict) {
 		c.JSON(http.StatusConflict, models.ErrorResponse{Error: "username already exists"})
 		return
 	}
-
-	// Create user
-	user := models.User{
-		Username:     req.Username,
-		PasswordHash: string(hashedPassword),
-		CreatedAt:    time.Now(),
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
 	}
-	h.store.users[req.Username] = user
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "user created successfully",
+		"message":  "user created successfully",
 		"username": user.Username,
 		"links": []models.Link{
 			{Rel: "login", Href: "/api/v1/auth/login", Method: http.MethodPost},
@@ -80,16 +72,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	h.store.mu.RLock()
-	user, exists := h.store.users[req.Username]
-	h.store.mu.RUnlock()
-
-	if !exists {
+	user, err := h.users.GetUser(req.Username)
+	if errors.Is(err, models.ErrNotFound) {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "invalid credentials"})
 		return
 	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
 
-	// Verify password
+	// Verify password against the stored bcrypt hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "invalid credentials"})
 		return

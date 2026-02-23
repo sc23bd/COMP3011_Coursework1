@@ -13,22 +13,40 @@
 package router
 
 import (
+	"database/sql"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
+	dbpkg "github.com/sc23bd/COMP3011_Coursework1/internal/db"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
 )
 
 // New returns a configured *gin.Engine.
-// A fresh in-memory store is created; swap it for a real DB adapter as needed.
+//
+// When db is non-nil the router uses the PostgreSQL-backed repositories;
+// otherwise it falls back to the in-memory Store.  Pass a nil *sql.DB for
+// local development without a running database (e.g. in tests).
+//
 // jwtSecret is used to sign and verify JWT tokens.
-func New(jwtSecret string) *gin.Engine {
-	store := handlers.NewStore()
-	h := handlers.NewHandler(store)
+func New(jwtSecret string, db *sql.DB) *gin.Engine {
+	var items handlers.ItemRepository
+	var users handlers.UserRepository
+
+	if db != nil {
+		items = dbpkg.NewItemRepo(db)
+		users = dbpkg.NewUserRepo(db)
+	} else {
+		store := handlers.NewStore()
+		items = store
+		users = store
+	}
+
+	h := handlers.NewHandler(items)
 
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(jwtSecret, "COMP3011_API")
-	authHandler := handlers.NewAuthHandler(store, jwtService)
+	authHandler := handlers.NewAuthHandler(users, jwtService)
 
 	r := gin.New()
 

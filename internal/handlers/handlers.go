@@ -1,10 +1,11 @@
 // Package handlers implements the HTTP handler functions for the Items
 // resource.  Each handler is a thin adapter between the HTTP layer and the
-// in-memory store, deliberately keeping business logic separate from
-// transport concerns (Client–Server principle).
+// repository, deliberately keeping business logic separate from transport
+// concerns (Client–Server principle).
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -14,8 +15,26 @@ import (
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
-// Store is the in-memory data store shared by all handlers.
-// Replace with a real database adapter in production.
+// ItemRepository abstracts the data-access layer for items.
+// Both the in-memory Store and the PostgreSQL ItemRepo satisfy this interface.
+type ItemRepository interface {
+	ListItems() ([]models.Item, error)
+	GetItem(id string) (models.Item, error)
+	CreateItem(name, description string) (models.Item, error)
+	UpdateItem(id, name, description string) (models.Item, error)
+	DeleteItem(id string) error
+}
+
+// UserRepository abstracts the data-access layer for users.
+// Both the in-memory Store and the PostgreSQL UserRepo satisfy this interface.
+type UserRepository interface {
+	GetUser(username string) (models.User, error)
+	CreateUser(username, passwordHash string) (models.User, error)
+}
+
+// Store is the in-memory data store that implements both ItemRepository and
+// UserRepository.  It is used when no DATABASE_URL is configured (e.g. tests,
+// local development without PostgreSQL).
 type Store struct {
 	mu      sync.RWMutex
 	items   map[string]models.Item
@@ -31,20 +50,109 @@ func NewStore() *Store {
 	}
 }
 
-// nextID generates a simple sequential string ID.
+// nextID generates a simple sequential string ID (must be called under lock).
 func (s *Store) nextID() string {
 	s.counter++
 	return fmt.Sprintf("%d", s.counter)
 }
 
-// Handler holds the dependencies required by the HTTP handlers.
-type Handler struct {
-	store *Store
+// --- ItemRepository implementation ---
+
+func (s *Store) ListItems() ([]models.Item, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]models.Item, 0, len(s.items))
+	for _, item := range s.items {
+		out = append(out, item)
+	}
+	return out, nil
 }
 
-// NewHandler constructs a Handler backed by the provided store.
-func NewHandler(store *Store) *Handler {
-	return &Handler{store: store}
+func (s *Store) GetItem(id string) (models.Item, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	item, ok := s.items[id]
+	if !ok {
+		return models.Item{}, models.ErrNotFound
+	}
+	return item, nil
+}
+
+func (s *Store) CreateItem(name, description string) (models.Item, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id := s.nextID()
+	now := time.Now()
+	item := models.Item{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	s.items[id] = item
+	return item, nil
+}
+
+func (s *Store) UpdateItem(id, name, description string) (models.Item, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	existing, ok := s.items[id]
+	if !ok {
+		return models.Item{}, models.ErrNotFound
+	}
+	existing.Name = name
+	existing.Description = description
+	existing.UpdatedAt = time.Now()
+	s.items[id] = existing
+	return existing, nil
+}
+
+func (s *Store) DeleteItem(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.items[id]; !ok {
+		return models.ErrNotFound
+	}
+	delete(s.items, id)
+	return nil
+}
+
+// --- UserRepository implementation ---
+
+func (s *Store) GetUser(username string) (models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	user, ok := s.users[username]
+	if !ok {
+		return models.User{}, models.ErrNotFound
+	}
+	return user, nil
+}
+
+func (s *Store) CreateUser(username, passwordHash string) (models.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.users[username]; exists {
+		return models.User{}, models.ErrConflict
+	}
+	user := models.User{
+		Username:     username,
+		PasswordHash: passwordHash,
+		CreatedAt:    time.Now(),
+	}
+	s.users[username] = user
+	return user, nil
+}
+
+// Handler holds the dependencies required by the HTTP handlers.
+type Handler struct {
+	items ItemRepository
+}
+
+// NewHandler constructs a Handler backed by the provided ItemRepository.
+func NewHandler(items ItemRepository) *Handler {
+	return &Handler{items: items}
 }
 
 // itemLinks builds the HATEOAS link set for a single item (Uniform Interface
@@ -67,12 +175,15 @@ func toResponse(item models.Item) models.ItemResponse {
 // ListItems handles GET /api/v1/items
 // Returns all items together with a collection-level hypermedia link.
 func (h *Handler) ListItems(c *gin.Context) {
-	h.store.mu.RLock()
-	defer h.store.mu.RUnlock()
+	items, err := h.items.ListItems()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
 
 	var mostRecent time.Time
-	responses := make([]models.ItemResponse, 0, len(h.store.items))
-	for _, item := range h.store.items {
+	responses := make([]models.ItemResponse, 0, len(items))
+	for _, item := range items {
 		responses = append(responses, toResponse(item))
 		if item.UpdatedAt.After(mostRecent) {
 			mostRecent = item.UpdatedAt
@@ -97,12 +208,13 @@ func (h *Handler) ListItems(c *gin.Context) {
 func (h *Handler) GetItem(c *gin.Context) {
 	id := c.Param("id")
 
-	h.store.mu.RLock()
-	item, ok := h.store.items[id]
-	h.store.mu.RUnlock()
-
-	if !ok {
+	item, err := h.items.GetItem(id)
+	if errors.Is(err, models.ErrNotFound) {
 		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "item not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
 		return
 	}
 
@@ -121,20 +233,13 @@ func (h *Handler) CreateItem(c *gin.Context) {
 		return
 	}
 
-	h.store.mu.Lock()
-	id := h.store.nextID()
-	now := time.Now()
-	item := models.Item{
-		ID:          id,
-		Name:        req.Name,
-		Description: req.Description,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+	item, err := h.items.CreateItem(req.Name, req.Description)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
 	}
-	h.store.items[id] = item
-	h.store.mu.Unlock()
 
-	c.Header("Location", "/api/v1/items/"+id)
+	c.Header("Location", "/api/v1/items/"+item.ID)
 	c.JSON(http.StatusCreated, toResponse(item))
 }
 
@@ -149,21 +254,17 @@ func (h *Handler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	h.store.mu.Lock()
-	existing, ok := h.store.items[id]
-	if !ok {
-		h.store.mu.Unlock()
+	item, err := h.items.UpdateItem(id, req.Name, req.Description)
+	if errors.Is(err, models.ErrNotFound) {
 		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "item not found"})
 		return
 	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
 
-	existing.Name = req.Name
-	existing.Description = req.Description
-	existing.UpdatedAt = time.Now()
-	h.store.items[id] = existing
-	h.store.mu.Unlock()
-
-	c.JSON(http.StatusOK, toResponse(existing))
+	c.JSON(http.StatusOK, toResponse(item))
 }
 
 // DeleteItem handles DELETE /api/v1/items/:id
@@ -171,15 +272,15 @@ func (h *Handler) UpdateItem(c *gin.Context) {
 func (h *Handler) DeleteItem(c *gin.Context) {
 	id := c.Param("id")
 
-	h.store.mu.Lock()
-	_, ok := h.store.items[id]
-	if !ok {
-		h.store.mu.Unlock()
+	err := h.items.DeleteItem(id)
+	if errors.Is(err, models.ErrNotFound) {
 		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "item not found"})
 		return
 	}
-	delete(h.store.items, id)
-	h.store.mu.Unlock()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
 
 	c.Status(http.StatusNoContent)
 }
