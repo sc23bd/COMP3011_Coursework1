@@ -2,7 +2,7 @@
 # integration testing.
 #
 # Usage:
-#   docker compose up -d          # start the database in the background
+#   docker compose up --build -d          # start the database in the background
 #   docker compose down           # stop and remove containers
 #   docker compose down -v        # stop, remove containers AND volumes (wipe data)
 #
@@ -10,8 +10,10 @@
 #   psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
 #
 # Environment variables for the application:
-#   DATABASE_URL=postgres://comp3011:comp3011@localhost:5432/comp3011?sslmode=disable
 #   JWT_SECRET=<your-secret>
+#   db_user=<username for database>
+#   db_name=<name for database>
+#   db_password=<password for database>
 services:
   app:
     build: .
@@ -26,7 +28,6 @@ services:
 
   db:
     image: postgres:16-alpine
-    restart: unless-stopped
     environment:
       POSTGRES_USER: ${db_user}
       POSTGRES_PASSWORD: ${db_password}
@@ -38,7 +39,7 @@ services:
       # Automatically apply the initial schema on first start.
       - ./migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U comp3011 -d comp3011"]
+      test: ["CMD-SHELL", "pg_isready -U ${db_user} -d ${db_name}"]
       interval: 5s
       timeout: 5s
       retries: 5
