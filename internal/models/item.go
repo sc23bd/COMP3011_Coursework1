@@ -27,8 +27,8 @@ type UpdateItemRequest struct {
 
 // Link represents a hypermedia link used to satisfy HATEOAS (Uniform Interface).
 type Link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
+	Rel    string `json:"rel"`
+	Href   string `json:"href"`
 	Method string `json:"method"`
 }
 
