@@ -20,7 +20,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: "postgres://comp3011:comp3011@db:5432/comp3011?sslmode=disable"
-      JWT_SECRET: "fjghhjklrdhgjhkgyutydrfchgvhkhcgjvhkhlftjvhklb"
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
 
@@ -28,9 +28,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: comp3011
-      POSTGRES_PASSWORD: comp3011
-      POSTGRES_DB: comp3011
+      POSTGRES_USER: ${db_user}
+      POSTGRES_PASSWORD: ${db_password}
+      POSTGRES_DB: ${db_name}
     ports:
       - "5432:5432"
     volumes:
