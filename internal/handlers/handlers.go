@@ -6,152 +6,21 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/db"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
-// ItemRepository abstracts the data-access layer for items.
-// Both the in-memory Store and the PostgreSQL ItemRepo satisfy this interface.
-type ItemRepository interface {
-	ListItems() ([]models.Item, error)
-	GetItem(id string) (models.Item, error)
-	CreateItem(name, description string) (models.Item, error)
-	UpdateItem(id, name, description string) (models.Item, error)
-	DeleteItem(id string) error
-}
-
-// UserRepository abstracts the data-access layer for users.
-// Both the in-memory Store and the PostgreSQL UserRepo satisfy this interface.
-type UserRepository interface {
-	GetUser(username string) (models.User, error)
-	CreateUser(username, passwordHash string) (models.User, error)
-}
-
-// Store is the in-memory data store that implements both ItemRepository and
-// UserRepository.  It is used when no DATABASE_URL is configured (e.g. tests,
-// local development without PostgreSQL).
-type Store struct {
-	mu      sync.RWMutex
-	items   map[string]models.Item
-	users   map[string]models.User
-	counter int
-}
-
-// NewStore returns an initialised, empty store.
-func NewStore() *Store {
-	return &Store{
-		items: make(map[string]models.Item),
-		users: make(map[string]models.User),
-	}
-}
-
-// nextID generates a simple sequential string ID (must be called under lock).
-func (s *Store) nextID() string {
-	s.counter++
-	return fmt.Sprintf("%d", s.counter)
-}
-
-// --- ItemRepository implementation ---
-
-func (s *Store) ListItems() ([]models.Item, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	out := make([]models.Item, 0, len(s.items))
-	for _, item := range s.items {
-		out = append(out, item)
-	}
-	return out, nil
-}
-
-func (s *Store) GetItem(id string) (models.Item, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	item, ok := s.items[id]
-	if !ok {
-		return models.Item{}, models.ErrNotFound
-	}
-	return item, nil
-}
-
-func (s *Store) CreateItem(name, description string) (models.Item, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	id := s.nextID()
-	now := time.Now()
-	item := models.Item{
-		ID:          id,
-		Name:        name,
-		Description: description,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-	s.items[id] = item
-	return item, nil
-}
-
-func (s *Store) UpdateItem(id, name, description string) (models.Item, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	existing, ok := s.items[id]
-	if !ok {
-		return models.Item{}, models.ErrNotFound
-	}
-	existing.Name = name
-	existing.Description = description
-	existing.UpdatedAt = time.Now()
-	s.items[id] = existing
-	return existing, nil
-}
-
-func (s *Store) DeleteItem(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, ok := s.items[id]; !ok {
-		return models.ErrNotFound
-	}
-	delete(s.items, id)
-	return nil
-}
-
-// --- UserRepository implementation ---
-
-func (s *Store) GetUser(username string) (models.User, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	user, ok := s.users[username]
-	if !ok {
-		return models.User{}, models.ErrNotFound
-	}
-	return user, nil
-}
-
-func (s *Store) CreateUser(username, passwordHash string) (models.User, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, exists := s.users[username]; exists {
-		return models.User{}, models.ErrConflict
-	}
-	user := models.User{
-		Username:     username,
-		PasswordHash: passwordHash,
-		CreatedAt:    time.Now(),
-	}
-	s.users[username] = user
-	return user, nil
-}
-
 // Handler holds the dependencies required by the HTTP handlers.
 type Handler struct {
-	items ItemRepository
+	items db.ItemRepository
 }
 
 // NewHandler constructs a Handler backed by the provided ItemRepository.
-func NewHandler(items ItemRepository) *Handler {
+func NewHandler(items db.ItemRepository) *Handler {
 	return &Handler{items: items}
 }
 

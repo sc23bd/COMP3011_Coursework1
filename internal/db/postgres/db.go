@@ -1,8 +1,8 @@
-// Package db provides the PostgreSQL data-access layer.
+// Package postgres provides the PostgreSQL data-access layer.
 // It contains repository implementations that satisfy the ItemRepository and
-// UserRepository interfaces defined in the handlers package, as well as a
+// UserRepository interfaces defined in the db package, as well as a
 // helper for opening a pooled *sql.DB connection.
-package db
+package postgres
 
 import (
 	"database/sql"
@@ -27,7 +27,7 @@ import (
 func Connect(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("db: open: %w", err)
+		return nil, fmt.Errorf("postgres: open: %w", err)
 	}
 
 	db.SetMaxOpenConns(25)
@@ -35,7 +35,7 @@ func Connect(dsn string) (*sql.DB, error) {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("db: ping: %w", err)
+		return nil, fmt.Errorf("postgres: ping: %w", err)
 	}
 
 	return db, nil

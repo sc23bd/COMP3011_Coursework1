@@ -18,6 +18,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
 	dbpkg "github.com/sc23bd/COMP3011_Coursework1/internal/db"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/db/memory"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
 )
@@ -30,14 +32,14 @@ import (
 //
 // jwtSecret is used to sign and verify JWT tokens.
 func New(jwtSecret string, db *sql.DB) *gin.Engine {
-	var items handlers.ItemRepository
-	var users handlers.UserRepository
+	var items dbpkg.ItemRepository
+	var users dbpkg.UserRepository
 
 	if db != nil {
-		items = dbpkg.NewItemRepo(db)
-		users = dbpkg.NewUserRepo(db)
+		items = postgres.NewItemRepo(db)
+		users = postgres.NewUserRepo(db)
 	} else {
-		store := handlers.NewStore()
+		store := memory.NewStore()
 		items = store
 		users = store
 	}

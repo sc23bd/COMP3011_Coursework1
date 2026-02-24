@@ -1,4 +1,4 @@
-package db
+package postgres
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
-// UserRepo is a PostgreSQL-backed implementation of handlers.UserRepository.
+// UserRepo is a PostgreSQL-backed implementation of db.UserRepository.
 // Passwords are stored exclusively as bcrypt hashes — plain-text passwords
 // never touch the database layer.
 type UserRepo struct {

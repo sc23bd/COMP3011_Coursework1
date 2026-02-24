@@ -1,4 +1,4 @@
-package db
+package postgres
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
-// ItemRepo is a PostgreSQL-backed implementation of handlers.ItemRepository.
+// ItemRepo is a PostgreSQL-backed implementation of db.ItemRepository.
 // All queries use parameterized placeholders ($1, $2, …) to prevent SQL
 // injection.
 type ItemRepo struct {
