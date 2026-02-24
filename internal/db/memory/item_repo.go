@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"time"
 
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
@@ -13,6 +14,9 @@ func (s *Store) ListItems() ([]models.Item, error) {
 	for _, item := range s.items {
 		out = append(out, item)
 	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].UpdatedAt.After(out[j].UpdatedAt)
+	})
 	return out, nil
 }
 

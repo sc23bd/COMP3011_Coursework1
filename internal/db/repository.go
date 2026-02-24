@@ -1,6 +1,5 @@
-// Package db provides repository interfaces and implementations for data access.
-// It supports both in-memory (memory package) and PostgreSQL (postgres package)
-// backends through a common interface.
+// Package db provides repository interfaces for data access.
+// Implementations are provided by the memory and postgres subpackages.
 package db
 
 import "github.com/sc23bd/COMP3011_Coursework1/internal/models"

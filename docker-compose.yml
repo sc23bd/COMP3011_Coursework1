@@ -14,6 +14,8 @@
 #   db_user=<username for database>
 #   db_name=<name for database>
 #   db_password=<password for database>
+#   db_url="postgres://${db_user}:${db_password}@db:5432/${db_name}?sslmode=disable"
+
 services:
   app:
     build: .

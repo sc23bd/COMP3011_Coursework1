@@ -94,6 +94,7 @@ JWT_SECRET=your-secret-key
 db_user=<username for db>
 db_password=<password for db>
 db_name=<name for db>
+db_url="postgres://${db_user}:${db_password}@db:5432/${db_name}?sslmode=disable"
 ```
 
 **Run both the application and database:**
