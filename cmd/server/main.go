@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 
-	dbpkg "github.com/sc23bd/COMP3011_Coursework1/internal/db"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/router"
 )
 
@@ -38,7 +38,7 @@ func main() {
 	// Connect to PostgreSQL when DATABASE_URL is provided; otherwise the
 	// router falls back to the in-memory store (useful for local development
 	// and tests without a running database).
-	db, err := dbpkg.ConnectFromEnv()
+	db, err := postgres.ConnectFromEnv()
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/db/memory"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
@@ -18,7 +19,7 @@ func init() {
 
 // newRouter builds a minimal Gin engine wired to a fresh store.
 func newRouter() *gin.Engine {
-	store := handlers.NewStore()
+	store := memory.NewStore()
 	h := handlers.NewHandler(store)
 
 	r := gin.New()
@@ -238,7 +239,7 @@ func TestDeleteItem_NotFound(t *testing.T) {
 // requests that carry a Cookie header.
 func TestStateless_NoCookies(t *testing.T) {
 	// Build router with NoSessionState middleware applied.
-	store := handlers.NewStore()
+	store := memory.NewStore()
 	h := handlers.NewHandler(store)
 
 	r := gin.New()

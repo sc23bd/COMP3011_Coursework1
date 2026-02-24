@@ -9,18 +9,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/db"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // AuthHandler holds dependencies for authentication endpoints.
 type AuthHandler struct {
-	users      UserRepository
+	users      db.UserRepository
 	jwtService *auth.JWTService
 }
 
 // NewAuthHandler constructs an AuthHandler.
-func NewAuthHandler(users UserRepository, jwtService *auth.JWTService) *AuthHandler {
+func NewAuthHandler(users db.UserRepository, jwtService *auth.JWTService) *AuthHandler {
 	return &AuthHandler{
 		users:      users,
 		jwtService: jwtService,

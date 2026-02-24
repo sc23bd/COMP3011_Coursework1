@@ -84,16 +84,52 @@ JWT_SECRET=your-secret-key go run ./cmd/server
 JWT_SECRET=your-secret-key PORT=9090 go run ./cmd/server
 ```
 
-### Option B — run with PostgreSQL via Docker Compose
+### Option B — run with Docker Compose (recommended)
+
+Create a `.env` file in the project root with your configuration:
 
 ```bash
-# 1. Start PostgreSQL (schema is applied automatically on first start)
-docker compose up -d
+# .env
+JWT_SECRET=your-secret-key
+db_user=<username for db>
+db_password=<password for db>
+db_name=<name for db>
+```
 
-# 2. Run the server pointing at the local database
-DATABASE_URL="postgres://comp3011:comp3011@localhost:5432/comp3011?sslmode=disable" \
-  JWT_SECRET=your-secret-key \
+**Run both the application and database:**
+
+```bash
+# Start both containers (schema is applied automatically on first start)
+docker compose up --build -d
+
+# View logs
+docker compose logs -f
+
+# Stop everything
+docker compose down
+
+# Stop and remove all data
+docker compose down -v
+```
+
+**Run only the database container:**
+
+```bash
+# Start only PostgreSQL
+docker compose up db -d
+
+# Run the application locally, connecting to the containerized database
+DATABASE_URL="postgres://<db_user>:<db_password>@localhost:5432/<db_name>?sslmode=disable" \
+  JWT_SECRET=<JWT_SECRET> \
   go run ./cmd/server
+```
+
+**Run only the application container:**
+
+```bash
+# Start only the app (requires a PostgreSQL instance already running elsewhere)
+# Update db_url in .env file to point to your external database
+docker compose up app -d
 ```
 
 ### Option C — run with an existing PostgreSQL instance
