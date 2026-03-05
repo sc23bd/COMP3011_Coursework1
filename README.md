@@ -416,33 +416,43 @@ The script logs progress for each step and prints a summary on completion.
 
 ### Football API Endpoints
 
-All football endpoints are read-only and require no authentication.
+`GET` endpoints are public and require no authentication. `POST`, `PUT`, and `DELETE` endpoints are protected and require a valid JWT (see [Authentication](#authentication)).
 
 Base URL: `http://localhost:8080/api/v1/football`
 
 #### Teams
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/teams` | List all national teams (alphabetical order) |
-| `GET` | `/teams/:id` | Get a single team by ID |
-| `GET` | `/teams/:id/history` | Get the historical names for a team |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/teams` | — | List all national teams (alphabetical order) |
+| `GET` | `/teams/:id` | — | Get a single team by ID |
+| `GET` | `/teams/:id/history` | — | Get the historical names for a team |
+| `POST` | `/teams` | JWT | Create a new team |
+| `PUT` | `/teams/:id` | JWT | Update an existing team |
+| `DELETE` | `/teams/:id` | JWT | Delete a team |
 
 #### Matches
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/matches` | List matches (paginated; `?limit=50&offset=0`) |
-| `GET` | `/matches/:id` | Get a single match by ID |
-| `GET` | `/matches/:id/goals` | Get all goals scored in a match |
-| `GET` | `/matches/:id/shootout` | Get the penalty-shootout result for a match (404 if none) |
-| `GET` | `/head-to-head?teamA=:id&teamB=:id` | Get all matches between two teams |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/matches` | — | List matches (paginated; `?limit=50&offset=0`) |
+| `GET` | `/matches/:id` | — | Get a single match by ID |
+| `GET` | `/matches/:id/goals` | — | Get all goals scored in a match |
+| `GET` | `/matches/:id/shootout` | — | Get the penalty-shootout result for a match (404 if none) |
+| `GET` | `/head-to-head?teamA=:id&teamB=:id` | — | Get all matches between two teams |
+| `POST` | `/matches` | JWT | Create a new match |
+| `PUT` | `/matches/:id` | JWT | Update an existing match |
+| `DELETE` | `/matches/:id` | JWT | Delete a match |
+| `POST` | `/matches/:id/goals` | JWT | Add a goal to a match |
+| `DELETE` | `/matches/:id/goals/:goalId` | JWT | Remove a goal from a match |
+| `POST` | `/matches/:id/shootout` | JWT | Record the penalty-shootout result for a match |
+| `DELETE` | `/matches/:id/shootout` | JWT | Remove the penalty-shootout result for a match |
 
 #### Players
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/players/:name/goals` | Get all goals scored by a player (exact name match) |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/players/:name/goals` | — | Get all goals scored by a player (exact name match) |
 
 ### Example Requests
 
