@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
@@ -474,7 +474,8 @@ func (r *FootballRepo) DeleteShootout(matchID int) error {
 
 // isUniqueViolation detects PostgreSQL unique_violation errors (code 23505).
 func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "23505")
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "23505"
 }
 
 // scanMatchRows reads Match rows from a *sql.Rows cursor.
