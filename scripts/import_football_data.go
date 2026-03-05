@@ -345,9 +345,12 @@ func insertMatches(tx *sql.Tx, data []byte, teamIDs, tournamentIDs map[string]in
 			(match_date, home_team_id, away_team_id, home_score, away_score,
 			 tournament_id, city, country, neutral)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		ON CONFLICT (match_date, home_team_id, away_team_id) DO UPDATE
-			SET home_score = EXCLUDED.home_score
+		ON CONFLICT (match_date, home_team_id, away_team_id) DO NOTHING
 		RETURNING id`
+
+	const selectID = `
+		SELECT id FROM football_matches
+		WHERE match_date = $1 AND home_team_id = $2 AND away_team_id = $3`
 
 	for _, row := range records {
 		get := func(col int) string {
@@ -397,6 +400,12 @@ func insertMatches(tx *sql.Tx, data []byte, teamIDs, tournamentIDs map[string]in
 			get(cityCol), get(countryCol),
 			neutral,
 		).Scan(&id)
+		if err == sql.ErrNoRows {
+			// Row already existed; fetch its ID so downstream inserts can reference it.
+			err = tx.QueryRow(selectID,
+				date.Format("2006-01-02"), homeTeamID, awayTeamID,
+			).Scan(&id)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("inserting match %s %s vs %s: %w", dateStr, homeTeam, awayTeam, err)
 		}
