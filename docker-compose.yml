@@ -18,7 +18,10 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        DATABASE_URL: ${db_url}
     depends_on:
       db:
         condition: service_healthy
