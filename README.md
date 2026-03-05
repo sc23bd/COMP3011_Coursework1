@@ -63,7 +63,8 @@ A PostgreSQL database is **required** to run the server.
 │       └── router.go                # Wires middleware, repositories, and routes together
 ├── migrations/
 │   ├── 001_initial_schema.sql       # Idempotent DDL — users table
-│   └── 002_football_schema.sql      # Idempotent DDL — football tables + indexes
+│   ├── 002_football_schema.sql      # Idempotent DDL — football tables + indexes
+│   └── 003_drop_items_table.sql     # Drops the obsolete items table (existing databases)
 ├── scripts/
 │   └── import_football_data.go      # Kaggle dataset importer
 ├── docker-compose.yml               # PostgreSQL 16 for local development
@@ -121,6 +122,9 @@ docker compose up db -d
 psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
 psql "$DATABASE_URL" -f migrations/002_football_schema.sql
 
+# If upgrading an existing database that has the items table, drop it
+psql "$DATABASE_URL" -f migrations/003_drop_items_table.sql
+
 # Run the application locally, connecting to the containerized database
 DATABASE_URL="postgres://<db_user>:<db_password>@localhost:5432/<db_name>?sslmode=disable" \
   JWT_SECRET=<JWT_SECRET> \
@@ -141,6 +145,9 @@ docker compose up app -d
 # 1. Apply the schemas (safe to run multiple times — all statements are IF NOT EXISTS)
 psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
 psql "$DATABASE_URL" -f migrations/002_football_schema.sql
+
+# 1a. If upgrading an existing database that has the items table, drop it
+psql "$DATABASE_URL" -f migrations/003_drop_items_table.sql
 
 # 2. (Optional) Import the Kaggle dataset
 DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
@@ -186,8 +193,8 @@ DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
 
 ### Schemas
 
-Two migration files live under `migrations/`.  Every statement uses
-`IF NOT EXISTS`, so the files are safe to re-apply.
+Three migration files live under `migrations/`.  Every statement uses
+`IF NOT EXISTS` / `IF EXISTS`, so the files are safe to re-apply.
 
 #### `migrations/001_initial_schema.sql` — users
 
@@ -255,6 +262,17 @@ CREATE TABLE IF NOT EXISTS football_former_names (
     end_date    DATE,
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+```
+
+#### `migrations/003_drop_items_table.sql` — remove obsolete items table
+
+Apply this on any existing database that was provisioned before the Item
+resource was removed:
+
+```sql
+DROP INDEX IF EXISTS items_name_idx;
+DROP INDEX IF EXISTS items_updated_at_idx;
+DROP TABLE IF EXISTS items;
 ```
 
 ### Connection pooling
