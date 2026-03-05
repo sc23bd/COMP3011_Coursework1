@@ -62,3 +62,42 @@ type ShootoutResponse struct {
 	Shootout
 	Links []Link `json:"links"`
 }
+
+// CreateMatchRequest is the payload accepted when creating a new Match.
+type CreateMatchRequest struct {
+	Date         time.Time `json:"date"         binding:"required"`
+	HomeTeamID   int       `json:"homeTeamId"   binding:"required,min=1"`
+	AwayTeamID   int       `json:"awayTeamId"   binding:"required,min=1"`
+	HomeScore    int       `json:"homeScore"    binding:"min=0"`
+	AwayScore    int       `json:"awayScore"    binding:"min=0"`
+	TournamentID int       `json:"tournamentId" binding:"required,min=1"`
+	City         string    `json:"city"`
+	Country      string    `json:"country"`
+	Neutral      bool      `json:"neutral"`
+}
+
+// UpdateMatchRequest is the payload accepted when replacing an existing Match.
+type UpdateMatchRequest struct {
+	Date         time.Time `json:"date"         binding:"required"`
+	HomeTeamID   int       `json:"homeTeamId"   binding:"required,min=1"`
+	AwayTeamID   int       `json:"awayTeamId"   binding:"required,min=1"`
+	HomeScore    int       `json:"homeScore"    binding:"min=0"`
+	AwayScore    int       `json:"awayScore"    binding:"min=0"`
+	TournamentID int       `json:"tournamentId" binding:"required,min=1"`
+	City         string    `json:"city"`
+	Country      string    `json:"country"`
+	Neutral      bool      `json:"neutral"`
+}
+
+// CreateGoalRequest is the payload accepted when recording a goal in a match.
+type CreateGoalRequest struct {
+	TeamID  int    `json:"teamId"  binding:"required,min=1"`
+	Scorer  string `json:"scorer"  binding:"required,min=1,max=100"`
+	OwnGoal bool   `json:"ownGoal"`
+	Penalty bool   `json:"penalty"`
+}
+
+// CreateShootoutRequest is the payload accepted when recording a shootout result.
+type CreateShootoutRequest struct {
+	WinnerID int `json:"winnerId" binding:"required,min=1"`
+}

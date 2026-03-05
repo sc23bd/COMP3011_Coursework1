@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
@@ -246,7 +247,219 @@ func (r *FootballRepo) GetPlayerGoals(scorer string) ([]models.Goal, error) {
 	return scanGoalRows(rows)
 }
 
-// --- scan helpers ------------------------------------------------------------
+// --- Write methods -----------------------------------------------------------
+
+// CreateTeam inserts a new national team and returns the populated record.
+func (r *FootballRepo) CreateTeam(name string) (models.Team, error) {
+	const q = `
+		INSERT INTO football_teams (name)
+		VALUES ($1)
+		RETURNING id, name, created_at`
+
+	var t models.Team
+	err := r.db.QueryRow(q, name).Scan(&t.ID, &t.Name, &t.CreatedAt)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return models.Team{}, models.ErrConflict
+		}
+		return models.Team{}, fmt.Errorf("footballRepo.CreateTeam: %w", err)
+	}
+	return t, nil
+}
+
+// UpdateTeam replaces the name of an existing team.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) UpdateTeam(id int, name string) (models.Team, error) {
+	const q = `
+		UPDATE football_teams
+		SET name = $2
+		WHERE id = $1
+		RETURNING id, name, created_at`
+
+	var t models.Team
+	err := r.db.QueryRow(q, id, name).Scan(&t.ID, &t.Name, &t.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.Team{}, models.ErrNotFound
+	}
+	if err != nil {
+		if isUniqueViolation(err) {
+			return models.Team{}, models.ErrConflict
+		}
+		return models.Team{}, fmt.Errorf("footballRepo.UpdateTeam: %w", err)
+	}
+	return t, nil
+}
+
+// DeleteTeam removes the team with the given ID.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) DeleteTeam(id int) error {
+	const q = `DELETE FROM football_teams WHERE id = $1`
+
+	result, err := r.db.Exec(q, id)
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteTeam: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteTeam rowsAffected: %w", err)
+	}
+	if n == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
+
+// CreateMatch inserts a new match and returns the fully populated record.
+func (r *FootballRepo) CreateMatch(m models.Match) (models.Match, error) {
+	const q = `
+		INSERT INTO football_matches
+			(match_date, home_team_id, away_team_id, home_score, away_score,
+			 tournament_id, city, country, neutral)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id`
+
+	var id int
+	err := r.db.QueryRow(q,
+		m.Date, m.HomeTeamID, m.AwayTeamID,
+		m.HomeScore, m.AwayScore, m.TournamentID,
+		m.City, m.Country, m.Neutral,
+	).Scan(&id)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return models.Match{}, models.ErrConflict
+		}
+		return models.Match{}, fmt.Errorf("footballRepo.CreateMatch: %w", err)
+	}
+	return r.GetMatchByID(id)
+}
+
+// UpdateMatch replaces the fields of an existing match.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) UpdateMatch(id int, m models.Match) (models.Match, error) {
+	const q = `
+		UPDATE football_matches
+		SET match_date=$2, home_team_id=$3, away_team_id=$4,
+		    home_score=$5, away_score=$6, tournament_id=$7,
+		    city=$8, country=$9, neutral=$10
+		WHERE id=$1`
+
+	result, err := r.db.Exec(q,
+		id,
+		m.Date, m.HomeTeamID, m.AwayTeamID,
+		m.HomeScore, m.AwayScore, m.TournamentID,
+		m.City, m.Country, m.Neutral,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return models.Match{}, models.ErrConflict
+		}
+		return models.Match{}, fmt.Errorf("footballRepo.UpdateMatch: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return models.Match{}, fmt.Errorf("footballRepo.UpdateMatch rowsAffected: %w", err)
+	}
+	if n == 0 {
+		return models.Match{}, models.ErrNotFound
+	}
+	return r.GetMatchByID(id)
+}
+
+// DeleteMatch removes the match with the given ID.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) DeleteMatch(id int) error {
+	const q = `DELETE FROM football_matches WHERE id = $1`
+
+	result, err := r.db.Exec(q, id)
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteMatch: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteMatch rowsAffected: %w", err)
+	}
+	if n == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
+
+// CreateGoal inserts a new goal record and returns the populated Goal.
+func (r *FootballRepo) CreateGoal(g models.Goal) (models.Goal, error) {
+	const q = `
+		INSERT INTO football_goalscorers (match_id, team_id, scorer, own_goal, penalty)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id`
+
+	err := r.db.QueryRow(q, g.MatchID, g.TeamID, g.Scorer, g.OwnGoal, g.Penalty).Scan(&g.ID)
+	if err != nil {
+		return models.Goal{}, fmt.Errorf("footballRepo.CreateGoal: %w", err)
+	}
+	return g, nil
+}
+
+// DeleteGoal removes the goal with the given ID.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) DeleteGoal(id int) error {
+	const q = `DELETE FROM football_goalscorers WHERE id = $1`
+
+	result, err := r.db.Exec(q, id)
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteGoal: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteGoal rowsAffected: %w", err)
+	}
+	if n == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
+
+// CreateShootout records the penalty-shootout result for a match.
+// Returns ErrConflict if a shootout already exists for the match.
+func (r *FootballRepo) CreateShootout(s models.Shootout) (models.Shootout, error) {
+	const q = `
+		INSERT INTO football_shootouts (match_id, winner_id)
+		VALUES ($1, $2)
+		RETURNING id`
+
+	err := r.db.QueryRow(q, s.MatchID, s.WinnerID).Scan(&s.ID)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return models.Shootout{}, models.ErrConflict
+		}
+		return models.Shootout{}, fmt.Errorf("footballRepo.CreateShootout: %w", err)
+	}
+	return s, nil
+}
+
+// DeleteShootout removes the shootout record for the given match.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) DeleteShootout(matchID int) error {
+	const q = `DELETE FROM football_shootouts WHERE match_id = $1`
+
+	result, err := r.db.Exec(q, matchID)
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteShootout: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("footballRepo.DeleteShootout rowsAffected: %w", err)
+	}
+	if n == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
+
+// --- helpers -----------------------------------------------------------------
+
+// isUniqueViolation detects PostgreSQL unique_violation errors (code 23505).
+func isUniqueViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "23505")
+}
 
 // scanMatchRows reads Match rows from a *sql.Rows cursor.
 func scanMatchRows(rows *sql.Rows) ([]models.Match, error) {

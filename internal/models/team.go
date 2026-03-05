@@ -36,3 +36,13 @@ type FormerNamesResponse struct {
 	Data  []FormerName `json:"data"`
 	Links []Link       `json:"links"`
 }
+
+// CreateTeamRequest is the payload accepted when creating a new Team.
+type CreateTeamRequest struct {
+	Name string `json:"name" binding:"required,min=1,max=100"`
+}
+
+// UpdateTeamRequest is the payload accepted when replacing an existing Team.
+type UpdateTeamRequest struct {
+	Name string `json:"name" binding:"required,min=1,max=100"`
+}

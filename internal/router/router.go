@@ -86,12 +86,13 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			items.DELETE("/:id", middleware.JWTAuth(jwtService), h.DeleteItem)
 		}
 
-		// Football routes - all read-only and public.
+		// Football routes - read operations are public, mutations require JWT.
 		// Only registered when a database connection is available.
 		if db != nil {
 			fh := handlers.NewFootballHandler(postgres.NewFootballRepo(db))
 			football := v1.Group("/football")
 			{
+				// Public read endpoints
 				football.GET("/teams", fh.ListTeams)
 				football.GET("/teams/:id", fh.GetTeam)
 				football.GET("/teams/:id/history", fh.GetTeamHistory)
@@ -104,6 +105,21 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 				football.GET("/head-to-head", fh.GetHeadToHead)
 
 				football.GET("/players/:name/goals", fh.GetPlayerGoals)
+
+				// Protected mutation endpoints (JWT required)
+				football.POST("/teams", middleware.JWTAuth(jwtService), fh.CreateTeam)
+				football.PUT("/teams/:id", middleware.JWTAuth(jwtService), fh.UpdateTeam)
+				football.DELETE("/teams/:id", middleware.JWTAuth(jwtService), fh.DeleteTeam)
+
+				football.POST("/matches", middleware.JWTAuth(jwtService), fh.CreateMatch)
+				football.PUT("/matches/:id", middleware.JWTAuth(jwtService), fh.UpdateMatch)
+				football.DELETE("/matches/:id", middleware.JWTAuth(jwtService), fh.DeleteMatch)
+
+				football.POST("/matches/:id/goals", middleware.JWTAuth(jwtService), fh.CreateGoal)
+				football.DELETE("/matches/:id/goals/:goalId", middleware.JWTAuth(jwtService), fh.DeleteGoal)
+
+				football.POST("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.CreateShootout)
+				football.DELETE("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.DeleteShootout)
 			}
 		}
 	}
