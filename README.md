@@ -350,3 +350,151 @@ curl -X POST http://localhost:8080/api/v1/items \
    any handler code.
 6. **Configuration** — read additional settings from environment variables or
    a config file in `cmd/server/main.go`.
+
+---
+
+## International Football Results Feature
+
+This feature exposes data from the
+[International football results from 1872 to 2025](https://www.kaggle.com/datasets/martj42/international-football-results-from-1872-to-2017)
+Kaggle dataset via a set of read-only REST endpoints under `/api/v1/football`.
+
+### Development Plan
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 1 — MVP** | ✅ Implemented | Schema, import script, Teams & Matches endpoints, Goals, Shootouts, Head-to-Head, Player goals |
+| **Phase 2 — Advanced** | 🔲 Planned | Full-text search, team statistics (win/draw/loss), tournament bracket views, pagination cursors |
+
+### Database Schema
+
+The football schema lives in `migrations/002_football_schema.sql`.  Apply it
+after the initial migration:
+
+```bash
+psql "$DATABASE_URL" -f migrations/002_football_schema.sql
+```
+
+Tables created:
+
+| Table | Description |
+|-------|-------------|
+| `football_teams` | Unique national team names |
+| `football_tournaments` | Unique competition names |
+| `football_matches` | Match results from `results.csv` |
+| `football_goalscorers` | Individual goal events from `goalscorers.csv` |
+| `football_shootouts` | Penalty-shootout winners from `shootouts.csv` |
+| `football_former_names` | Historical team names from `former_names.csv` |
+
+### Importing the Dataset
+
+The import script downloads the Kaggle ZIP, extracts the four CSV files, and
+loads them into the database inside a single transaction (idempotent — safe to
+re-run).
+
+**Prerequisites:**
+
+* `DATABASE_URL` pointing to a PostgreSQL instance with the football schema applied.
+* Either:
+  * Kaggle API credentials (`KAGGLE_USERNAME` + `KAGGLE_KEY`), **or**
+  * The ZIP archive placed at `./football_data.zip` to skip the download.
+
+```bash
+# With Kaggle credentials
+DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
+KAGGLE_USERNAME=your_username \
+KAGGLE_KEY=your_api_key \
+go run scripts/import_football_data.go
+
+# With a pre-downloaded ZIP
+DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
+cp /path/to/archive.zip ./football_data.zip && \
+go run scripts/import_football_data.go
+```
+
+The script logs progress for each step and prints a summary on completion.
+
+### Football API Endpoints
+
+All football endpoints are read-only and require no authentication.
+
+Base URL: `http://localhost:8080/api/v1/football`
+
+#### Teams
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/teams` | List all national teams (alphabetical order) |
+| `GET` | `/teams/:id` | Get a single team by ID |
+| `GET` | `/teams/:id/history` | Get the historical names for a team |
+
+#### Matches
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/matches` | List matches (paginated; `?limit=50&offset=0`) |
+| `GET` | `/matches/:id` | Get a single match by ID |
+| `GET` | `/matches/:id/goals` | Get all goals scored in a match |
+| `GET` | `/matches/:id/shootout` | Get the penalty-shootout result for a match (404 if none) |
+| `GET` | `/head-to-head?teamA=:id&teamB=:id` | Get all matches between two teams |
+
+#### Players
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/players/:name/goals` | Get all goals scored by a player (exact name match) |
+
+### Example Requests
+
+```bash
+# List all teams
+curl http://localhost:8080/api/v1/football/teams
+
+# Get team with ID 1
+curl http://localhost:8080/api/v1/football/teams/1
+
+# Get historical names for team 1
+curl http://localhost:8080/api/v1/football/teams/1/history
+
+# List first 20 matches starting from offset 100
+curl "http://localhost:8080/api/v1/football/matches?limit=20&offset=100"
+
+# Get goals for match 42
+curl http://localhost:8080/api/v1/football/matches/42/goals
+
+# Get penalty-shootout result for match 42
+curl http://localhost:8080/api/v1/football/matches/42/shootout
+
+# Head-to-head between teams 1 and 2
+curl "http://localhost:8080/api/v1/football/head-to-head?teamA=1&teamB=2"
+
+# All goals scored by a player
+curl http://localhost:8080/api/v1/football/players/Ronaldo/goals
+```
+
+### Example Response
+
+**GET /api/v1/football/matches/1**
+
+```json
+{
+  "id": 1,
+  "date": "1872-11-30T00:00:00Z",
+  "homeTeam": "Scotland",
+  "awayTeam": "England",
+  "homeTeamId": 45,
+  "awayTeamId": 12,
+  "homeScore": 0,
+  "awayScore": 0,
+  "tournament": "Friendly",
+  "tournamentId": 3,
+  "city": "Glasgow",
+  "country": "Scotland",
+  "neutral": false,
+  "links": [
+    {"rel": "self",     "href": "/api/v1/football/matches/1",          "method": "GET"},
+    {"rel": "goals",    "href": "/api/v1/football/matches/1/goals",    "method": "GET"},
+    {"rel": "shootout", "href": "/api/v1/football/matches/1/shootout", "method": "GET"}
+  ]
+}
+```

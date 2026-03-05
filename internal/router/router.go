@@ -34,17 +34,21 @@ import (
 func New(jwtSecret string, db *sql.DB) *gin.Engine {
 	var items dbpkg.ItemRepository
 	var users dbpkg.UserRepository
+	var football dbpkg.FootballRepository
 
 	if db != nil {
 		items = postgres.NewItemRepo(db)
 		users = postgres.NewUserRepo(db)
+		football = postgres.NewFootballRepo(db)
 	} else {
 		store := memory.NewStore()
 		items = store
 		users = store
+		football = memory.NewFootballStore()
 	}
 
 	h := handlers.NewHandler(items)
+	fh := handlers.NewFootballHandler(football)
 
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(jwtSecret, "COMP3011_API")
@@ -81,6 +85,23 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			items.POST("", middleware.JWTAuth(jwtService), h.CreateItem)
 			items.PUT("/:id", middleware.JWTAuth(jwtService), h.UpdateItem)
 			items.DELETE("/:id", middleware.JWTAuth(jwtService), h.DeleteItem)
+		}
+
+		// Football routes - all read-only and public
+		football := v1.Group("/football")
+		{
+			football.GET("/teams", fh.ListTeams)
+			football.GET("/teams/:id", fh.GetTeam)
+			football.GET("/teams/:id/history", fh.GetTeamHistory)
+
+			football.GET("/matches", fh.ListMatches)
+			football.GET("/matches/:id", fh.GetMatch)
+			football.GET("/matches/:id/goals", fh.GetMatchGoals)
+			football.GET("/matches/:id/shootout", fh.GetMatchShootout)
+
+			football.GET("/head-to-head", fh.GetHeadToHead)
+
+			football.GET("/players/:name/goals", fh.GetPlayerGoals)
 		}
 	}
 
