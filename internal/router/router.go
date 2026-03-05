@@ -30,25 +30,24 @@ import (
 // otherwise it falls back to the in-memory Store.  Pass a nil *sql.DB for
 // local development without a running database (e.g. in tests).
 //
+// Football routes are only registered when a database connection is provided,
+// because the football feature has no in-memory fallback.
+//
 // jwtSecret is used to sign and verify JWT tokens.
 func New(jwtSecret string, db *sql.DB) *gin.Engine {
 	var items dbpkg.ItemRepository
 	var users dbpkg.UserRepository
-	var football dbpkg.FootballRepository
 
 	if db != nil {
 		items = postgres.NewItemRepo(db)
 		users = postgres.NewUserRepo(db)
-		football = postgres.NewFootballRepo(db)
 	} else {
 		store := memory.NewStore()
 		items = store
 		users = store
-		football = memory.NewFootballStore()
 	}
 
 	h := handlers.NewHandler(items)
-	fh := handlers.NewFootballHandler(football)
 
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(jwtSecret, "COMP3011_API")
@@ -87,21 +86,25 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			items.DELETE("/:id", middleware.JWTAuth(jwtService), h.DeleteItem)
 		}
 
-		// Football routes - all read-only and public
-		football := v1.Group("/football")
-		{
-			football.GET("/teams", fh.ListTeams)
-			football.GET("/teams/:id", fh.GetTeam)
-			football.GET("/teams/:id/history", fh.GetTeamHistory)
+		// Football routes - all read-only and public.
+		// Only registered when a database connection is available.
+		if db != nil {
+			fh := handlers.NewFootballHandler(postgres.NewFootballRepo(db))
+			football := v1.Group("/football")
+			{
+				football.GET("/teams", fh.ListTeams)
+				football.GET("/teams/:id", fh.GetTeam)
+				football.GET("/teams/:id/history", fh.GetTeamHistory)
 
-			football.GET("/matches", fh.ListMatches)
-			football.GET("/matches/:id", fh.GetMatch)
-			football.GET("/matches/:id/goals", fh.GetMatchGoals)
-			football.GET("/matches/:id/shootout", fh.GetMatchShootout)
+				football.GET("/matches", fh.ListMatches)
+				football.GET("/matches/:id", fh.GetMatch)
+				football.GET("/matches/:id/goals", fh.GetMatchGoals)
+				football.GET("/matches/:id/shootout", fh.GetMatchShootout)
 
-			football.GET("/head-to-head", fh.GetHeadToHead)
+				football.GET("/head-to-head", fh.GetHeadToHead)
 
-			football.GET("/players/:name/goals", fh.GetPlayerGoals)
+				football.GET("/players/:name/goals", fh.GetPlayerGoals)
+			}
 		}
 	}
 
