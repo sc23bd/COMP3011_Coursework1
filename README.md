@@ -1,24 +1,24 @@
-# COMP3011 Coursework 1 — RESTful API (Gin / Go + PostgreSQL)
+# COMP3011 Coursework 1 — International Football Results API (Gin / Go + PostgreSQL)
 
 A production-ready RESTful API in Go using the
 [Gin](https://github.com/gin-gonic/gin) framework backed by **PostgreSQL**
-(via [`lib/pq`](https://github.com/lib/pq)).  Every architectural decision is
-explicitly mapped to one or more of the
-**Six Guiding Principles of REST** (Fielding, 2000).
+(via [`lib/pq`](https://github.com/lib/pq)).  The API exposes data from the
+[International football results from 1872 to 2025](https://www.kaggle.com/datasets/martj42/international-football-results-from-1872-to-2017)
+Kaggle dataset.  Every architectural decision is explicitly mapped to one or
+more of the **Six Guiding Principles of REST** (Fielding, 2000).
 
-The server falls back automatically to an in-memory store when no
-`DATABASE_URL` is configured, so the full test suite runs without a database.
+A PostgreSQL database is **required** to run the server.
 
 ---
 
 ## Six Guiding Principles of REST
 
-| # | Principle | How this template addresses it |
+| # | Principle | How this project addresses it |
 |---|-----------|-------------------------------|
 | 1 | **Client–Server** | HTTP handlers (`internal/handlers`) are completely decoupled from any client implementation. The server exposes a uniform HTTP interface; clients are free to be web browsers, mobile apps, or CLI tools. |
 | 2 | **Stateless** | No server-side session state exists. Every request must carry all information needed to be processed (validated body / path parameters). Authentication is token-based using JWT — all user identity is carried in the self-describing token, not in server-side sessions. |
 | 3 | **Cacheable** | The `CacheControl` middleware sets `Cache-Control: public, max-age=60` on `GET`/`HEAD` responses, enabling clients and intermediary caches to store them. Mutating methods (`POST`, `PUT`, `DELETE`) are marked `no-store`. |
-| 4 | **Uniform Interface** | Resources are identified by versioned URIs (`/api/v1/items/{id}`). Standard HTTP verbs (`GET`, `POST`, `PUT`, `DELETE`) map to CRUD operations. Response bodies include HATEOAS hypermedia links so clients can discover related actions without out-of-band knowledge. |
+| 4 | **Uniform Interface** | Resources are identified by versioned URIs (e.g. `/api/v1/football/teams/{id}`). Standard HTTP verbs (`GET`, `POST`, `PUT`, `DELETE`) map to CRUD operations. Response bodies include HATEOAS hypermedia links so clients can discover related actions without out-of-band knowledge. |
 | 5 | **Layered System** | Middleware (`RequestID`, `Logger`, `JWTAuth`, `CacheControl`, `Recovery`) forms transparent processing layers between the network and the handlers. The same binary runs correctly behind a load-balancer or reverse proxy. |
 | 6 | **Code on Demand** *(optional)* | Not implemented by default. The architecture supports it — a handler could return executable JavaScript or WebAssembly to extend client functionality when required. |
 
@@ -30,30 +30,44 @@ The server falls back automatically to an in-memory store when no
 .
 ├── cmd/
 │   └── server/
-│       └── main.go              # Entry point — reads PORT, JWT_SECRET, DATABASE_URL env vars
+│       └── main.go                  # Entry point — reads PORT, JWT_SECRET, DATABASE_URL env vars
 ├── internal/
 │   ├── auth/
-│   │   └── jwt.go               # JWT token generation and validation
+│   │   └── jwt.go                   # JWT token generation and validation
 │   ├── db/
-│   │   ├── db.go                # PostgreSQL connection helper (Connect / ConnectFromEnv)
-│   │   ├── item_repo.go         # PostgreSQL ItemRepo — implements ItemRepository
-│   │   └── user_repo.go         # PostgreSQL UserRepo — implements UserRepository
+│   │   ├── repository.go            # Repository interfaces (FootballRepository, UserRepository)
+│   │   └── postgres/
+│   │       ├── db.go                # PostgreSQL connection helper (Connect / ConnectFromEnv)
+│   │       ├── football_repo.go     # PostgreSQL FootballRepo — implements FootballRepository
+│   │       └── user_repo.go         # PostgreSQL UserRepo — implements UserRepository
 │   ├── handlers/
-│   │   ├── auth.go              # Authentication endpoints (register, login)
-│   │   ├── handlers.go          # Item CRUD handlers + repository interfaces + in-memory Store
-│   │   └── handlers_test.go     # Handler tests (run against the in-memory Store)
+│   │   ├── auth.go                  # Authentication endpoints (register, login)
+│   │   ├── football_handler.go      # FootballHandler + shared helpers (HATEOAS links)
+│   │   ├── football_teams.go        # Teams CRUD handlers
+│   │   ├── football_matches.go      # Matches CRUD handlers
+│   │   ├── football_goals.go        # Goals & Shootouts handlers
+│   │   ├── football_teams_test.go   # Teams handler tests
+│   │   ├── football_matches_test.go # Matches handler tests
+│   │   └── football_goals_test.go   # Goals & Shootouts handler tests
 │   ├── middleware/
-│   │   ├── auth.go              # JWT authentication middleware
-│   │   └── middleware.go        # RequestID, Logger, CacheControl
+│   │   ├── auth.go                  # JWT authentication middleware
+│   │   └── middleware.go            # RequestID, Logger, CacheControl, NoSessionState
 │   ├── models/
-│   │   ├── errors.go            # Shared sentinel errors (ErrNotFound, ErrConflict)
-│   │   ├── item.go              # Item domain model + request/response types
-│   │   └── user.go              # User domain model + auth request/response types
+│   │   ├── common.go                # Shared types: Link, ErrorResponse
+│   │   ├── errors.go                # Shared sentinel errors (ErrNotFound, ErrConflict)
+│   │   ├── match.go                 # Match, Goal, Shootout domain models
+│   │   ├── team.go                  # Team, FormerName domain models
+│   │   ├── tournament.go            # Tournament domain model
+│   │   └── user.go                  # User domain model + auth request/response types
 │   └── router/
-│       └── router.go            # Wires middleware, repositories, and routes together
+│       └── router.go                # Wires middleware, repositories, and routes together
 ├── migrations/
-│   └── 001_initial_schema.sql   # Idempotent DDL — users and items tables + indexes
-├── docker-compose.yml           # PostgreSQL 16 for local development / integration testing
+│   ├── 001_initial_schema.sql       # Idempotent DDL — users table
+│   ├── 002_football_schema.sql      # Idempotent DDL — football tables + indexes
+│   └── 003_drop_items_table.sql     # Drops the obsolete items table (existing databases)
+├── scripts/
+│   └── import_football_data.go      # Kaggle dataset importer
+├── docker-compose.yml               # PostgreSQL 16 for local development
 ├── go.mod
 ├── go.sum
 └── README.md
@@ -66,27 +80,12 @@ The server falls back automatically to an in-memory store when no
 ### Prerequisites
 
 * Go 1.24 or later
-* **PostgreSQL 14+** *(optional — the server uses an in-memory store when
-  `DATABASE_URL` is not set)*
-* **Docker & Docker Compose** *(optional — for the quickest local database
-  setup)*
+* **PostgreSQL 14+** — required to run the server
+* **Docker & Docker Compose** *(optional — for the quickest local database setup)*
 
-### Option A — run without a database (in-memory store)
+### Option A — run with Docker Compose (recommended)
 
-The server automatically falls back to an in-memory store when `DATABASE_URL`
-is absent.  This is the default for local development and all unit tests.
-
-```bash
-# Requires only JWT_SECRET; no database needed
-JWT_SECRET=your-secret-key go run ./cmd/server
-
-# Custom port
-JWT_SECRET=your-secret-key PORT=9090 go run ./cmd/server
-```
-
-### Option B — run with Docker Compose (recommended)
-
-Create a `.env` file in the project root with your configuration:
+Create a `.env` file in the project root:
 
 ```bash
 # .env
@@ -119,6 +118,13 @@ docker compose down -v
 # Start only PostgreSQL
 docker compose up db -d
 
+# Apply schemas
+psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
+psql "$DATABASE_URL" -f migrations/002_football_schema.sql
+
+# If upgrading an existing database that has the items table, drop it
+psql "$DATABASE_URL" -f migrations/003_drop_items_table.sql
+
 # Run the application locally, connecting to the containerized database
 DATABASE_URL="postgres://<db_user>:<db_password>@localhost:5432/<db_name>?sslmode=disable" \
   JWT_SECRET=<JWT_SECRET> \
@@ -133,13 +139,21 @@ DATABASE_URL="postgres://<db_user>:<db_password>@localhost:5432/<db_name>?sslmod
 docker compose up app -d
 ```
 
-### Option C — run with an existing PostgreSQL instance
+### Option B — run with an existing PostgreSQL instance
 
 ```bash
-# 1. Apply the schema (safe to run multiple times — all statements are IF NOT EXISTS)
+# 1. Apply the schemas (safe to run multiple times — all statements are IF NOT EXISTS)
 psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
+psql "$DATABASE_URL" -f migrations/002_football_schema.sql
 
-# 2. Start the server
+# 1a. If upgrading an existing database that has the items table, drop it
+psql "$DATABASE_URL" -f migrations/003_drop_items_table.sql
+
+# 2. (Optional) Import the Kaggle dataset
+DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
+  go run scripts/import_football_data.go
+
+# 3. Start the server
 DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
   JWT_SECRET=your-secret-key \
   go run ./cmd/server
@@ -150,8 +164,8 @@ DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `JWT_SECRET` | **Yes** (production) | — | Secret key used to sign JWT tokens. Set `DEV_MODE=true` to auto-generate a random one for development (not safe for production). |
+| `DATABASE_URL` | **Yes** | — | libpq connection string for PostgreSQL (e.g. `postgres://user:pass@host:5432/dbname?sslmode=disable`) |
 | `PORT` | No | `8080` | TCP port the server listens on |
-| `DATABASE_URL` | No | *(in-memory)* | libpq connection string for PostgreSQL |
 | `DEV_MODE` | No | — | Set to `true` to auto-generate `JWT_SECRET` in development |
 
 ### Run the tests
@@ -160,23 +174,27 @@ DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
 go test ./...
 ```
 
-Tests run against the in-memory store; no database connection is required.
+The handler tests use in-process mock repositories, so no database connection is required to run the test suite.
 
 ### Build a binary
 
 ```bash
 go build -o api-server ./cmd/server
-./api-server
+DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
+  JWT_SECRET=your-secret-key \
+  ./api-server
 ```
 
 ---
 
 ## Database
 
-### Schema
+### Schemas
 
-The schema lives in `migrations/001_initial_schema.sql`.  Every statement uses
-`IF NOT EXISTS`, so the file is safe to re-apply.
+Three migration files live under `migrations/`.  Every statement uses
+`IF NOT EXISTS` / `IF EXISTS`, so the files are safe to re-apply.
+
+#### `migrations/001_initial_schema.sql` — users
 
 ```sql
 -- users: bcrypt-hashed passwords only — plain text never stored
@@ -185,23 +203,79 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+```
 
--- items: auto-incrementing SERIAL primary key
-CREATE TABLE IF NOT EXISTS items (
+#### `migrations/002_football_schema.sql` — football data
+
+```sql
+CREATE TABLE IF NOT EXISTS football_teams (
+    id         SERIAL       PRIMARY KEY,
+    name       VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS football_tournaments (
+    id         SERIAL       PRIMARY KEY,
+    name       VARCHAR(200) NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS football_matches (
+    id            SERIAL       PRIMARY KEY,
+    match_date    DATE         NOT NULL,
+    home_team_id  INTEGER      NOT NULL REFERENCES football_teams(id),
+    away_team_id  INTEGER      NOT NULL REFERENCES football_teams(id),
+    home_score    INTEGER      NOT NULL,
+    away_score    INTEGER      NOT NULL,
+    tournament_id INTEGER      NOT NULL REFERENCES football_tournaments(id),
+    city          VARCHAR(100) NOT NULL DEFAULT '',
+    country       VARCHAR(100) NOT NULL DEFAULT '',
+    neutral       BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    UNIQUE (match_date, home_team_id, away_team_id)
+);
+
+CREATE TABLE IF NOT EXISTS football_goalscorers (
+    id         SERIAL       PRIMARY KEY,
+    match_id   INTEGER      NOT NULL REFERENCES football_matches(id),
+    team_id    INTEGER      NOT NULL REFERENCES football_teams(id),
+    scorer     VARCHAR(100) NOT NULL,
+    own_goal   BOOLEAN      NOT NULL DEFAULT FALSE,
+    penalty    BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS football_shootouts (
+    id         SERIAL      PRIMARY KEY,
+    match_id   INTEGER     NOT NULL REFERENCES football_matches(id) UNIQUE,
+    winner_id  INTEGER     NOT NULL REFERENCES football_teams(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS football_former_names (
     id          SERIAL       PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    description VARCHAR(500) NOT NULL DEFAULT '',
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    team_id     INTEGER      NOT NULL REFERENCES football_teams(id),
+    former_name VARCHAR(100) NOT NULL,
+    start_date  DATE,
+    end_date    DATE,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 ```
 
-Indexes are created on `items.updated_at DESC` (used for `Last-Modified`
-header ordering) and `items.name` (future filtering / search support).
+#### `migrations/003_drop_items_table.sql` — remove obsolete items table
+
+Apply this on any existing database that was provisioned before the Item
+resource was removed:
+
+```sql
+DROP INDEX IF EXISTS items_name_idx;
+DROP INDEX IF EXISTS items_updated_at_idx;
+DROP TABLE IF EXISTS items;
+```
 
 ### Connection pooling
 
-`internal/db/db.go` configures the `*sql.DB` pool:
+`internal/db/postgres/db.go` configures the `*sql.DB` pool:
 
 | Setting | Value | Rationale |
 |---------|-------|-----------|
@@ -211,16 +285,37 @@ header ordering) and `items.name` (future filtering / search support).
 
 ### Repository pattern
 
-Two interfaces live in `internal/handlers/handlers.go`:
+Repository interfaces are declared in `internal/db/repository.go`:
 
 ```go
-type ItemRepository interface { ... }
-type UserRepository interface { ... }
+type FootballRepository interface { ... }
+type UserRepository     interface { ... }
 ```
 
-`router.New` receives a `*sql.DB`; when it is non-nil the PostgreSQL
-implementations (`db.ItemRepo`, `db.UserRepo`) are wired in.  When it is nil
-the in-memory `handlers.Store` is used instead — no handler code changes.
+`router.New` receives a `*sql.DB` and wires in the PostgreSQL implementations
+(`postgres.NewFootballRepo`, `postgres.NewUserRepo`).  Handlers depend only on
+these interfaces, making them easy to test with mock implementations.
+
+---
+
+## Importing the Dataset
+
+The import script loads the Kaggle ZIP, extracts the four CSV files, and
+loads them into the database inside a single transaction (idempotent — safe to
+re-run).
+
+**Prerequisites:**
+
+* `DATABASE_URL` pointing to a PostgreSQL instance with the football schema applied.
+* The ZIP archive placed at `./football_data.zip`.
+
+```bash
+cp /path/to/archive.zip ./football_data.zip
+DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
+go run scripts/import_football_data.go
+```
+
+The script logs progress for each step and prints a summary on completion.
 
 ---
 
@@ -228,24 +323,64 @@ the in-memory `handlers.Store` is used instead — no handler code changes.
 
 Base URL: `http://localhost:8080/api/v1`
 
-### Authentication Resource
+### Authentication
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/auth/register` | Register a new user account |
-| `POST` | `/auth/login` | Login and receive JWT token |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/auth/register` | — | Register a new user account |
+| `POST` | `/auth/login` | — | Login and receive a JWT token |
 
-### Items Resource
+### Football — Teams
 
-| Method | Path | Description | Auth Required |
-|--------|------|-------------|---------------|
-| `GET` | `/items` | List all items | No |
-| `POST` | `/items` | Create a new item | **Yes** |
-| `GET` | `/items/:id` | Get a single item | No |
-| `PUT` | `/items/:id` | Replace an existing item | **Yes** |
-| `DELETE` | `/items/:id` | Delete an item | **Yes** |
+`GET` endpoints are public. `POST`, `PUT`, and `DELETE` endpoints require a valid JWT.
 
-### Request / Response Examples
+Base path: `/api/v1/football`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/teams` | — | List all national teams (alphabetical order) |
+| `GET` | `/teams/:id` | — | Get a single team by ID |
+| `GET` | `/teams/:id/history` | — | Get the historical names for a team |
+| `POST` | `/teams` | JWT | Create a new team |
+| `PUT` | `/teams/:id` | JWT | Update an existing team |
+| `DELETE` | `/teams/:id` | JWT | Delete a team |
+
+### Football — Matches
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/matches` | — | List matches (paginated; `?limit=50&offset=0`) |
+| `GET` | `/matches/:id` | — | Get a single match by ID |
+| `GET` | `/matches/:id/goals` | — | Get all goals scored in a match |
+| `GET` | `/matches/:id/shootout` | — | Get the penalty-shootout result for a match (404 if none) |
+| `GET` | `/head-to-head?teamA=:id&teamB=:id` | — | Get all matches between two teams |
+| `POST` | `/matches` | JWT | Create a new match |
+| `PUT` | `/matches/:id` | JWT | Update an existing match |
+| `DELETE` | `/matches/:id` | JWT | Delete a match |
+| `POST` | `/matches/:id/goals` | JWT | Add a goal to a match |
+| `DELETE` | `/matches/:id/goals/:goalId` | JWT | Remove a goal from a match |
+| `POST` | `/matches/:id/shootout` | JWT | Record the penalty-shootout result for a match |
+| `DELETE` | `/matches/:id/shootout` | JWT | Remove the penalty-shootout result for a match |
+
+### Football — Players
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/players/:name/goals` | — | Get all goals scored by a player (exact name match) |
+
+### Response Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Request-ID` | Unique ID for each request (traceability) |
+| `Cache-Control` | `public, max-age=60` on GET; `no-store` on mutations |
+| `Location` | Set to the new resource URI on `201 Created` |
+
+---
+
+## Request / Response Examples
+
+### Authentication
 
 **Register a user**
 
@@ -277,214 +412,71 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "links": [
-    {"rel":"items","href":"/api/v1/items","method":"GET"}
+    {"rel":"football","href":"/api/v1/football/teams","method":"GET"}
   ]
 }
 ```
 
-**List items** (no authentication required)
+### Football
+
+**List all teams**
 
 ```bash
-curl http://localhost:8080/api/v1/items
-```
-
-```json
-{
-  "data": [ ... ],
-  "links": [
-    {"rel":"self",   "href":"/api/v1/items","method":"GET"},
-    {"rel":"create", "href":"/api/v1/items","method":"POST"}
-  ]
-}
-```
-
-**Create an item** (requires JWT token)
-
-```bash
-curl -X POST http://localhost:8080/api/v1/items \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"name":"Widget","description":"A sample widget"}'
-```
-
-```json
-{
-  "id": "1",
-  "name": "Widget",
-  "description": "A sample widget",
-  "createdAt": "2024-01-01T12:00:00Z",
-  "updatedAt": "2024-01-01T12:00:00Z",
-  "links": [
-    {"rel":"self",   "href":"/api/v1/items/1","method":"GET"},
-    {"rel":"update", "href":"/api/v1/items/1","method":"PUT"},
-    {"rel":"delete", "href":"/api/v1/items/1","method":"DELETE"}
-  ]
-}
-```
-
-### Response Headers
-
-| Header | Description |
-|--------|-------------|
-| `X-Request-ID` | Unique ID for each request (traceability) |
-| `Authorization` | Bearer token required for mutation operations (POST, PUT, DELETE) |
-| `Cache-Control` | `public, max-age=60` on GET; `no-store` on mutations |
-| `Location` | Set to the new resource URI on `201 Created` |
-
----
-
-## Extending the Project
-
-1. **Add a new resource** — create a handler file in `internal/handlers/`,
-   define a new repository interface, add routes in `internal/router/router.go`.
-2. **Add a database migration** — create the next numbered SQL file in
-   `migrations/` (e.g. `002_add_tags.sql`) and apply it with `psql`.
-3. **Add role-based access control** — extend the JWT claims in
-   `internal/auth/jwt.go` to include roles, then add middleware to check
-   permissions before reaching handlers.
-4. **Add pagination** — the `items_updated_at_idx` and `items_name_idx`
-   indexes already support efficient `LIMIT`/`OFFSET` or cursor-based queries;
-   extend `ListItems` in `internal/db/item_repo.go` and the route handler.
-5. **Add a caching layer** — introduce a `CachedItemRepo` that wraps
-   `ItemRepository`; swap it in `internal/router/router.go` without touching
-   any handler code.
-6. **Configuration** — read additional settings from environment variables or
-   a config file in `cmd/server/main.go`.
-
----
-
-## International Football Results Feature
-
-This feature exposes data from the
-[International football results from 1872 to 2025](https://www.kaggle.com/datasets/martj42/international-football-results-from-1872-to-2017)
-Kaggle dataset via a set of read-only REST endpoints under `/api/v1/football`.
-
-### Development Plan
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| **Phase 1 — MVP** | ✅ Implemented | Schema, import script, Teams & Matches endpoints, Goals, Shootouts, Head-to-Head, Player goals |
-| **Phase 2 — Advanced** | 🔲 Planned | Full-text search, team statistics (win/draw/loss), tournament bracket views, pagination cursors |
-
-### Database Schema
-
-The football schema lives in `migrations/002_football_schema.sql`.  Apply it
-after the initial migration:
-
-```bash
-psql "$DATABASE_URL" -f migrations/002_football_schema.sql
-```
-
-Tables created:
-
-| Table | Description |
-|-------|-------------|
-| `football_teams` | Unique national team names |
-| `football_tournaments` | Unique competition names |
-| `football_matches` | Match results from `results.csv` |
-| `football_goalscorers` | Individual goal events from `goalscorers.csv` |
-| `football_shootouts` | Penalty-shootout winners from `shootouts.csv` |
-| `football_former_names` | Historical team names from `former_names.csv` |
-
-### Importing the Dataset
-
-The import script downloads the Kaggle ZIP, extracts the four CSV files, and
-loads them into the database inside a single transaction (idempotent — safe to
-re-run).
-
-**Prerequisites:**
-
-* `DATABASE_URL` pointing to a PostgreSQL instance with the football schema applied.
-* Either:
-  * Kaggle API credentials (`KAGGLE_USERNAME` + `KAGGLE_KEY`), **or**
-  * The ZIP archive placed at `./football_data.zip` to skip the download.
-
-```bash
-# With Kaggle credentials
-DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
-KAGGLE_USERNAME=your_username \
-KAGGLE_KEY=your_api_key \
-go run scripts/import_football_data.go
-
-# With a pre-downloaded ZIP
-DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
-cp /path/to/archive.zip ./football_data.zip && \
-go run scripts/import_football_data.go
-```
-
-The script logs progress for each step and prints a summary on completion.
-
-### Football API Endpoints
-
-`GET` endpoints are public and require no authentication. `POST`, `PUT`, and `DELETE` endpoints are protected and require a valid JWT (see [Authentication](#authentication)).
-
-Base URL: `http://localhost:8080/api/v1/football`
-
-#### Teams
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/teams` | — | List all national teams (alphabetical order) |
-| `GET` | `/teams/:id` | — | Get a single team by ID |
-| `GET` | `/teams/:id/history` | — | Get the historical names for a team |
-| `POST` | `/teams` | JWT | Create a new team |
-| `PUT` | `/teams/:id` | JWT | Update an existing team |
-| `DELETE` | `/teams/:id` | JWT | Delete a team |
-
-#### Matches
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/matches` | — | List matches (paginated; `?limit=50&offset=0`) |
-| `GET` | `/matches/:id` | — | Get a single match by ID |
-| `GET` | `/matches/:id/goals` | — | Get all goals scored in a match |
-| `GET` | `/matches/:id/shootout` | — | Get the penalty-shootout result for a match (404 if none) |
-| `GET` | `/head-to-head?teamA=:id&teamB=:id` | — | Get all matches between two teams |
-| `POST` | `/matches` | JWT | Create a new match |
-| `PUT` | `/matches/:id` | JWT | Update an existing match |
-| `DELETE` | `/matches/:id` | JWT | Delete a match |
-| `POST` | `/matches/:id/goals` | JWT | Add a goal to a match |
-| `DELETE` | `/matches/:id/goals/:goalId` | JWT | Remove a goal from a match |
-| `POST` | `/matches/:id/shootout` | JWT | Record the penalty-shootout result for a match |
-| `DELETE` | `/matches/:id/shootout` | JWT | Remove the penalty-shootout result for a match |
-
-#### Players
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/players/:name/goals` | — | Get all goals scored by a player (exact name match) |
-
-### Example Requests
-
-```bash
-# List all teams
 curl http://localhost:8080/api/v1/football/teams
+```
 
-# Get team with ID 1
+**Get a single team**
+
+```bash
 curl http://localhost:8080/api/v1/football/teams/1
+```
 
-# Get historical names for team 1
+**Get historical names for a team**
+
+```bash
 curl http://localhost:8080/api/v1/football/teams/1/history
+```
 
-# List first 20 matches starting from offset 100
+**List matches (paginated)**
+
+```bash
 curl "http://localhost:8080/api/v1/football/matches?limit=20&offset=100"
+```
 
-# Get goals for match 42
+**Get goals for a match**
+
+```bash
 curl http://localhost:8080/api/v1/football/matches/42/goals
+```
 
-# Get penalty-shootout result for match 42
+**Get penalty-shootout result for a match**
+
+```bash
 curl http://localhost:8080/api/v1/football/matches/42/shootout
+```
 
-# Head-to-head between teams 1 and 2
+**Head-to-head between two teams**
+
+```bash
 curl "http://localhost:8080/api/v1/football/head-to-head?teamA=1&teamB=2"
+```
 
-# All goals scored by a player
+**All goals scored by a player**
+
+```bash
 curl http://localhost:8080/api/v1/football/players/Ronaldo/goals
 ```
 
-### Example Response
+**Create a team** (requires JWT)
 
-**GET /api/v1/football/matches/1**
+```bash
+curl -X POST http://localhost:8080/api/v1/football/teams \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"name":"New Team"}'
+```
+
+**Example match response**
 
 ```json
 {
@@ -503,8 +495,28 @@ curl http://localhost:8080/api/v1/football/players/Ronaldo/goals
   "neutral": false,
   "links": [
     {"rel": "self",     "href": "/api/v1/football/matches/1",          "method": "GET"},
+    {"rel": "update",   "href": "/api/v1/football/matches/1",          "method": "PUT"},
+    {"rel": "delete",   "href": "/api/v1/football/matches/1",          "method": "DELETE"},
     {"rel": "goals",    "href": "/api/v1/football/matches/1/goals",    "method": "GET"},
     {"rel": "shootout", "href": "/api/v1/football/matches/1/shootout", "method": "GET"}
   ]
 }
 ```
+
+---
+
+## Extending the Project
+
+1. **Add a new resource** — create a handler file in `internal/handlers/`,
+   define a new repository interface in `internal/db/repository.go`, implement
+   it in `internal/db/postgres/`, and add routes in `internal/router/router.go`.
+2. **Add a database migration** — create the next numbered SQL file in
+   `migrations/` (e.g. `003_add_statistics.sql`) and apply it with `psql`.
+3. **Add role-based access control** — extend the JWT claims in
+   `internal/auth/jwt.go` to include roles, then add middleware to check
+   permissions before reaching handlers.
+4. **Add pagination** — indexes on `football_matches` already support efficient
+   `LIMIT`/`OFFSET` or cursor-based queries; extend `ListMatches` in
+   `internal/db/postgres/football_repo.go` and the route handler.
+5. **Configuration** — read additional settings from environment variables or
+   a config file in `cmd/server/main.go`.

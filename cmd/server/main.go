@@ -35,9 +35,7 @@ func main() {
 		}
 	}
 
-	// Connect to PostgreSQL when DATABASE_URL is provided; otherwise the
-	// router falls back to the in-memory store (useful for local development
-	// and tests without a running database).
+	// Connect to PostgreSQL.
 	db, err := postgres.ConnectFromEnv()
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
@@ -46,7 +44,7 @@ func main() {
 		log.Println("Connected to PostgreSQL database")
 		defer db.Close()
 	} else {
-		log.Println("No DATABASE_URL set — using in-memory store")
+		log.Println("No DATABASE_URL set — running without a database connection")
 	}
 
 	r := router.New(jwtSecret, db)

@@ -18,7 +18,10 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        DATABASE_URL: ${db_url}
     depends_on:
       db:
         condition: service_healthy
@@ -29,7 +32,7 @@ services:
       - "8080:8080"
 
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: ${db_user}
       POSTGRES_PASSWORD: ${db_password}

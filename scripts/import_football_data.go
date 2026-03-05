@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -38,12 +37,7 @@ import (
 )
 
 const (
-	// kaggleDownloadURL is the Kaggle API endpoint for the dataset.
-	// Note: the slug contains "1872-to-2017" because that was the original
-	// dataset name; the actual data has been updated and covers up to 2025.
-	kaggleDownloadURL = "https://www.kaggle.com/api/v1/datasets/download/martj42/international-football-results-from-1872-to-2017"
 	localZipPath      = "./football_data.zip"
-	downloadTimeout   = 5 * time.Minute
 )
 
 func main() {
@@ -176,46 +170,13 @@ func run() error {
 // --- download / file helpers -------------------------------------------------
 
 // getZipData returns the raw bytes of the dataset ZIP.
-// If a local file exists at localZipPath it is used; otherwise the file is
-// downloaded from Kaggle using credentials from the environment.
 func getZipData() ([]byte, error) {
-	if _, err := os.Stat(localZipPath); err == nil {
-		log.Printf("Using local ZIP file: %s", localZipPath)
-		return os.ReadFile(localZipPath)
-	}
-
-	user := os.Getenv("KAGGLE_USERNAME")
-	key := os.Getenv("KAGGLE_KEY")
-	if user == "" || key == "" {
-		return nil, fmt.Errorf("KAGGLE_USERNAME and KAGGLE_KEY are required to download the dataset (or place %s locally)", localZipPath)
-	}
-
-	log.Printf("Downloading dataset from %s …", kaggleDownloadURL)
-	req, err := http.NewRequest(http.MethodGet, kaggleDownloadURL, nil)
-	if err != nil {
+	if _, err := os.Stat(localZipPath); err != nil {
+		log.Printf("Local File not found")
 		return nil, err
 	}
-	req.SetBasicAuth(user, key)
-
-	client := &http.Client{Timeout: downloadTimeout}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("download failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download returned HTTP %d", resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading download body: %w", err)
-	}
-
-	// Cache locally for re-runs.
-	_ = os.WriteFile(localZipPath, data, 0o644)
-	return data, nil
+	log.Printf("Using local ZIP file: %s", localZipPath)
+	return os.ReadFile(localZipPath)
 }
 
 // --- CSV helpers -------------------------------------------------------------

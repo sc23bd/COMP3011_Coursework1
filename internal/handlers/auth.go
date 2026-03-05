@@ -99,7 +99,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, models.LoginResponse{
 		Token: token,
 		Links: []models.Link{
-			{Rel: "items", Href: "/api/v1/items", Method: http.MethodGet},
+			{Rel: "football", Href: "/api/v1/football/teams", Method: http.MethodGet},
 		},
 	})
 }
