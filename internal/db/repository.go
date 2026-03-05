@@ -5,7 +5,7 @@ package db
 import "github.com/sc23bd/COMP3011_Coursework1/internal/models"
 
 // FootballRepository abstracts the data-access layer for the football feature.
-// Both the in-memory and PostgreSQL implementations satisfy this interface.
+// It is currently implemented by the PostgreSQL repository.
 type FootballRepository interface {
 	// Teams - read
 	ListTeams() ([]models.Team, error)
