@@ -151,8 +151,6 @@ psql "$DATABASE_URL" -f migrations/003_drop_items_table.sql
 
 # 2. (Optional) Import the Kaggle dataset
 DATABASE_URL="postgres://user:pass@host:5432/dbname?sslmode=disable" \
-  KAGGLE_USERNAME=your_username \
-  KAGGLE_KEY=your_api_key \
   go run scripts/import_football_data.go
 
 # 3. Start the server
@@ -302,25 +300,16 @@ these interfaces, making them easy to test with mock implementations.
 
 ## Importing the Dataset
 
-The import script downloads the Kaggle ZIP, extracts the four CSV files, and
+The import script loads the Kaggle ZIP, extracts the four CSV files, and
 loads them into the database inside a single transaction (idempotent — safe to
 re-run).
 
 **Prerequisites:**
 
 * `DATABASE_URL` pointing to a PostgreSQL instance with the football schema applied.
-* Either:
-  * Kaggle API credentials (`KAGGLE_USERNAME` + `KAGGLE_KEY`), **or**
-  * The ZIP archive placed at `./football_data.zip` to skip the download.
+* The ZIP archive placed at `./football_data.zip`.
 
 ```bash
-# With Kaggle credentials
-DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
-KAGGLE_USERNAME=your_username \
-KAGGLE_KEY=your_api_key \
-go run scripts/import_football_data.go
-
-# With a pre-downloaded ZIP
 cp /path/to/archive.zip ./football_data.zip
 DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
 go run scripts/import_football_data.go

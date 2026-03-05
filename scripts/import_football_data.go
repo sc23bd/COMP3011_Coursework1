@@ -37,12 +37,7 @@ import (
 )
 
 const (
-	// kaggleDownloadURL is the Kaggle API endpoint for the dataset.
-	// Note: the slug contains "1872-to-2017" because that was the original
-	// dataset name; the actual data has been updated and covers up to 2025.
-	kaggleDownloadURL = "https://www.kaggle.com/api/v1/datasets/download/martj42/international-football-results-from-1872-to-2017"
 	localZipPath      = "./football_data.zip"
-	downloadTimeout   = 5 * time.Minute
 )
 
 func main() {
