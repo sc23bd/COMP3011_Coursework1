@@ -30,6 +30,18 @@ func NewAuthHandler(users db.UserRepository, jwtService *auth.JWTService) *AuthH
 
 // Register handles POST /api/v1/auth/register
 // Creates a new user account with hashed password.
+//
+// @Summary      Register a new user
+// @Description  Create a new user account with username and password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.RegisterRequest true "User registration details"
+// @Success      201  {object}  map[string]interface{}  "User created successfully"
+// @Failure      400  {object}  models.ErrorResponse    "Invalid request"
+// @Failure      409  {object}  models.ErrorResponse    "Username already exists"
+// @Failure      500  {object}  models.ErrorResponse    "Internal server error"
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -66,6 +78,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 // Login handles POST /api/v1/auth/login
 // Validates credentials and returns a JWT token.
+//
+// @Summary      User login
+// @Description  Authenticate user and return JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.LoginRequest true "User login credentials"
+// @Success      200  {object}  models.LoginResponse    "Login successful"
+// @Failure      400  {object}  models.ErrorResponse    "Invalid request"
+// @Failure      401  {object}  models.ErrorResponse    "Invalid credentials"
+// @Failure      500  {object}  models.ErrorResponse    "Internal server error"
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

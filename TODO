@@ -1,0 +1,2 @@
+fix goal scorers being repeated each time the data loader runs,
+  maybe make unique on certain fields
