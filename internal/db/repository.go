@@ -12,6 +12,9 @@ type FootballRepository interface {
 	GetTeamByID(id int) (models.Team, error)
 	GetTeamHistory(teamID int) ([]models.FormerName, error)
 
+	// Tournaments - read
+	GetTournamentByID(id int) (models.Tournament, error)
+
 	// Teams - write
 	CreateTeam(name string) (models.Team, error)
 	UpdateTeam(id int, name string) (models.Team, error)

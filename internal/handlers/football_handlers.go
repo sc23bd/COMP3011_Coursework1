@@ -329,6 +329,36 @@ func (h *FootballHandler) GetPlayerGoals(c *gin.Context) {
 
 // --- Write handlers ----------------------------------------------------------
 
+// checkTeamExists looks up a team by ID and writes a 400/500 response if it
+// is not found or an error occurs.  Returns true only if the team exists.
+func (h *FootballHandler) checkTeamExists(c *gin.Context, id int, label string) bool {
+	_, err := h.repo.GetTeamByID(id)
+	if errors.Is(err, models.ErrNotFound) {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: label + " not found"})
+		return false
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return false
+	}
+	return true
+}
+
+// checkTournamentExists looks up a tournament by ID and writes a 400/500
+// response if it is not found or an error occurs.  Returns true only if it exists.
+func (h *FootballHandler) checkTournamentExists(c *gin.Context, id int) bool {
+	_, err := h.repo.GetTournamentByID(id)
+	if errors.Is(err, models.ErrNotFound) {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "tournament not found"})
+		return false
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return false
+	}
+	return true
+}
+
 // CreateTeam handles POST /api/v1/football/teams
 // Creates a new national team. Requires JWT authorisation.
 func (h *FootballHandler) CreateTeam(c *gin.Context) {
@@ -420,18 +450,14 @@ func (h *FootballHandler) CreateMatch(c *gin.Context) {
 	}
 
 	// Verify the home and away teams exist before inserting.
-	if _, err := h.repo.GetTeamByID(req.HomeTeamID); errors.Is(err, models.ErrNotFound) {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "home team not found"})
-		return
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+	if !h.checkTeamExists(c, req.HomeTeamID, "home team") {
 		return
 	}
-	if _, err := h.repo.GetTeamByID(req.AwayTeamID); errors.Is(err, models.ErrNotFound) {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "away team not found"})
+	if !h.checkTeamExists(c, req.AwayTeamID, "away team") {
 		return
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+	}
+	// Verify the tournament exists before inserting.
+	if !h.checkTournamentExists(c, req.TournamentID) {
 		return
 	}
 
@@ -476,6 +502,17 @@ func (h *FootballHandler) UpdateMatch(c *gin.Context) {
 	var req models.UpdateMatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Verify teams and tournament exist before updating.
+	if !h.checkTeamExists(c, req.HomeTeamID, "home team") {
+		return
+	}
+	if !h.checkTeamExists(c, req.AwayTeamID, "away team") {
+		return
+	}
+	if !h.checkTournamentExists(c, req.TournamentID) {
 		return
 	}
 

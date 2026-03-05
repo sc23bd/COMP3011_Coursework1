@@ -21,6 +21,7 @@ import (
 
 type footballMock struct {
 	teams       []models.Team
+	tournaments []models.Tournament
 	matches     []models.Match
 	goals       []models.Goal
 	shootouts   []models.Shootout
@@ -30,6 +31,12 @@ type footballMock struct {
 func (m *footballMock) addTeam(name string) models.Team {
 	t := models.Team{ID: len(m.teams) + 1, Name: name, CreatedAt: time.Time{}}
 	m.teams = append(m.teams, t)
+	return t
+}
+
+func (m *footballMock) addTournament(name string) models.Tournament {
+	t := models.Tournament{ID: len(m.tournaments) + 1, Name: name}
+	m.tournaments = append(m.tournaments, t)
 	return t
 }
 
@@ -76,6 +83,15 @@ func (m *footballMock) GetTeamHistory(teamID int) ([]models.FormerName, error) {
 		}
 	}
 	return result, nil
+}
+
+func (m *footballMock) GetTournamentByID(id int) (models.Tournament, error) {
+	for _, t := range m.tournaments {
+		if t.ID == id {
+			return t, nil
+		}
+	}
+	return models.Tournament{}, models.ErrNotFound
 }
 
 func (m *footballMock) ListMatches(limit, offset int) ([]models.Match, error) {
@@ -845,6 +861,7 @@ func TestCreateMatch_Success(t *testing.T) {
 	r, mock := newFootballRouter()
 	eng := mock.addTeam("England")
 	ger := mock.addTeam("Germany")
+	tourn := mock.addTournament("FIFA World Cup")
 
 	w := doRequest(r, http.MethodPost, "/api/v1/football/matches", map[string]interface{}{
 		"date":         "1966-07-30T00:00:00Z",
@@ -852,7 +869,7 @@ func TestCreateMatch_Success(t *testing.T) {
 		"awayTeamId":   ger.ID,
 		"homeScore":    4,
 		"awayScore":    2,
-		"tournamentId": 1,
+		"tournamentId": tourn.ID,
 		"city":         "London",
 		"country":      "England",
 		"neutral":      false,
@@ -926,9 +943,10 @@ func TestUpdateMatch_Success(t *testing.T) {
 	r, mock := newFootballRouter()
 	eng := mock.addTeam("England")
 	ger := mock.addTeam("Germany")
+	tourn := mock.addTournament("FIFA World Cup")
 	m := mock.addMatch(models.Match{
 		HomeTeamID: eng.ID, AwayTeamID: ger.ID,
-		HomeScore: 1, AwayScore: 1, TournamentID: 1,
+		HomeScore: 1, AwayScore: 1, TournamentID: tourn.ID,
 	})
 
 	w := doRequest(r, http.MethodPut, "/api/v1/football/matches/"+itoa(m.ID), map[string]interface{}{
@@ -937,7 +955,7 @@ func TestUpdateMatch_Success(t *testing.T) {
 		"awayTeamId":   ger.ID,
 		"homeScore":    1,
 		"awayScore":    2,
-		"tournamentId": 1,
+		"tournamentId": tourn.ID,
 	})
 
 	if w.Code != http.StatusOK {
@@ -955,6 +973,7 @@ func TestUpdateMatch_NotFound(t *testing.T) {
 	r, mock := newFootballRouter()
 	eng := mock.addTeam("England")
 	ger := mock.addTeam("Germany")
+	tourn := mock.addTournament("FIFA World Cup")
 
 	w := doRequest(r, http.MethodPut, "/api/v1/football/matches/999", map[string]interface{}{
 		"date":         "1990-07-04T00:00:00Z",
@@ -962,11 +981,96 @@ func TestUpdateMatch_NotFound(t *testing.T) {
 		"awayTeamId":   ger.ID,
 		"homeScore":    0,
 		"awayScore":    0,
-		"tournamentId": 1,
+		"tournamentId": tourn.ID,
 	})
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestCreateMatch_TournamentNotFound(t *testing.T) {
+	r, mock := newFootballRouter()
+	eng := mock.addTeam("England")
+	ger := mock.addTeam("Germany")
+
+	w := doRequest(r, http.MethodPost, "/api/v1/football/matches", map[string]interface{}{
+		"date":         "1966-07-30T00:00:00Z",
+		"homeTeamId":   eng.ID,
+		"awayTeamId":   ger.ID,
+		"homeScore":    0,
+		"awayScore":    0,
+		"tournamentId": 999,
+	})
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestUpdateMatch_HomeTeamNotFound(t *testing.T) {
+	r, mock := newFootballRouter()
+	ger := mock.addTeam("Germany")
+	tourn := mock.addTournament("FIFA World Cup")
+	m := mock.addMatch(models.Match{
+		HomeTeamID: 1, AwayTeamID: ger.ID, TournamentID: tourn.ID,
+	})
+
+	w := doRequest(r, http.MethodPut, "/api/v1/football/matches/"+itoa(m.ID), map[string]interface{}{
+		"date":         "1990-07-04T00:00:00Z",
+		"homeTeamId":   999,
+		"awayTeamId":   ger.ID,
+		"homeScore":    0,
+		"awayScore":    0,
+		"tournamentId": tourn.ID,
+	})
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestUpdateMatch_AwayTeamNotFound(t *testing.T) {
+	r, mock := newFootballRouter()
+	eng := mock.addTeam("England")
+	tourn := mock.addTournament("FIFA World Cup")
+	m := mock.addMatch(models.Match{
+		HomeTeamID: eng.ID, AwayTeamID: 1, TournamentID: tourn.ID,
+	})
+
+	w := doRequest(r, http.MethodPut, "/api/v1/football/matches/"+itoa(m.ID), map[string]interface{}{
+		"date":         "1990-07-04T00:00:00Z",
+		"homeTeamId":   eng.ID,
+		"awayTeamId":   999,
+		"homeScore":    0,
+		"awayScore":    0,
+		"tournamentId": tourn.ID,
+	})
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestUpdateMatch_TournamentNotFound(t *testing.T) {
+	r, mock := newFootballRouter()
+	eng := mock.addTeam("England")
+	ger := mock.addTeam("Germany")
+	m := mock.addMatch(models.Match{
+		HomeTeamID: eng.ID, AwayTeamID: ger.ID, TournamentID: 1,
+	})
+
+	w := doRequest(r, http.MethodPut, "/api/v1/football/matches/"+itoa(m.ID), map[string]interface{}{
+		"date":         "1990-07-04T00:00:00Z",
+		"homeTeamId":   eng.ID,
+		"awayTeamId":   ger.ID,
+		"homeScore":    0,
+		"awayScore":    0,
+		"tournamentId": 999,
+	})
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 

@@ -101,6 +101,22 @@ func (r *FootballRepo) GetTeamHistory(teamID int) ([]models.FormerName, error) {
 	return history, nil
 }
 
+// GetTournamentByID returns the tournament with the given ID.
+// Returns ErrNotFound when no matching row exists.
+func (r *FootballRepo) GetTournamentByID(id int) (models.Tournament, error) {
+	const q = `SELECT id, name, created_at FROM football_tournaments WHERE id = $1`
+
+	var t models.Tournament
+	err := r.db.QueryRow(q, id).Scan(&t.ID, &t.Name, &t.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.Tournament{}, models.ErrNotFound
+	}
+	if err != nil {
+		return models.Tournament{}, fmt.Errorf("footballRepo.GetTournamentByID: %w", err)
+	}
+	return t, nil
+}
+
 // ListMatches returns a paginated list of matches ordered by date descending.
 func (r *FootballRepo) ListMatches(limit, offset int) ([]models.Match, error) {
 	const q = `
