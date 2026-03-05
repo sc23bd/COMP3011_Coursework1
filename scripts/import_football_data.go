@@ -47,34 +47,40 @@ const (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("import failed: %v", err)
+	}
+}
+
+func run() error {
 	// --- Connect to the database -------------------------------------------
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
+		return fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	log.Println("Connected to database")
 
 	// --- Obtain the ZIP file -----------------------------------------------
 	zipData, err := getZipData()
 	if err != nil {
-		log.Fatalf("failed to get ZIP data: %v", err)
+		return fmt.Errorf("failed to get ZIP data: %w", err)
 	}
 	log.Printf("ZIP data ready (%d bytes)", len(zipData))
 
 	// --- Parse CSV files ---------------------------------------------------
 	zr, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
-		log.Fatalf("failed to open ZIP: %v", err)
+		return fmt.Errorf("failed to open ZIP: %w", err)
 	}
 
 	csvFiles := make(map[string][]byte)
@@ -85,12 +91,12 @@ func main() {
 		case "results.csv", "goalscorers.csv", "shootouts.csv", "former_names.csv":
 			rc, err := f.Open()
 			if err != nil {
-				log.Fatalf("failed to open %s in ZIP: %v", f.Name, err)
+				return fmt.Errorf("failed to open %s in ZIP: %w", f.Name, err)
 			}
-			data, err := io.ReadAll(rc)
+			data, readErr := io.ReadAll(rc)
 			rc.Close()
-			if err != nil {
-				log.Fatalf("failed to read %s: %v", f.Name, err)
+			if readErr != nil {
+				return fmt.Errorf("failed to read %s: %w", f.Name, readErr)
 			}
 			csvFiles[name] = data
 			log.Printf("  Read %s (%d bytes)", f.Name, len(data))
@@ -102,12 +108,12 @@ func main() {
 	// failure leaves the database unchanged.
 	tx, err := db.Begin()
 	if err != nil {
-		log.Fatalf("failed to begin transaction: %v", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
-			log.Printf("transaction rolled back: %v", err)
+			log.Printf("transaction rolled back due to error: %v", err)
 		}
 	}()
 
@@ -116,14 +122,14 @@ func main() {
 	// each match row during the match-insertion step.
 	teamIDs, tournamentIDs, err := insertTeamsAndTournaments(tx, csvFiles["results.csv"])
 	if err != nil {
-		log.Fatalf("failed to insert teams/tournaments: %v", err)
+		return fmt.Errorf("failed to insert teams/tournaments: %w", err)
 	}
 	log.Printf("Teams: %d unique | Tournaments: %d unique", len(teamIDs), len(tournamentIDs))
 
 	// Step 2: Insert matches and build a match-key → id map for child tables.
 	matchIDs, err := insertMatches(tx, csvFiles["results.csv"], teamIDs, tournamentIDs)
 	if err != nil {
-		log.Fatalf("failed to insert matches: %v", err)
+		return fmt.Errorf("failed to insert matches: %w", err)
 	}
 	log.Printf("Matches imported: %d rows", len(matchIDs))
 
@@ -131,7 +137,7 @@ func main() {
 	if data, ok := csvFiles["goalscorers.csv"]; ok {
 		count, err := insertGoalscorers(tx, data, matchIDs, teamIDs)
 		if err != nil {
-			log.Fatalf("failed to insert goalscorers: %v", err)
+			return fmt.Errorf("failed to insert goalscorers: %w", err)
 		}
 		log.Printf("Goals imported: %d rows", count)
 	}
@@ -140,7 +146,7 @@ func main() {
 	if data, ok := csvFiles["shootouts.csv"]; ok {
 		count, err := insertShootouts(tx, data, matchIDs, teamIDs)
 		if err != nil {
-			log.Fatalf("failed to insert shootouts: %v", err)
+			return fmt.Errorf("failed to insert shootouts: %w", err)
 		}
 		log.Printf("Shootouts imported: %d rows", count)
 	}
@@ -149,21 +155,22 @@ func main() {
 	if data, ok := csvFiles["former_names.csv"]; ok {
 		// Ensure any team in former_names.csv that is not already in teamIDs
 		// gets inserted first.
-		if err := ensureFormerNameTeams(tx, data, teamIDs); err != nil {
-			log.Fatalf("failed to ensure former-name teams: %v", err)
+		if err = ensureFormerNameTeams(tx, data, teamIDs); err != nil {
+			return fmt.Errorf("failed to ensure former-name teams: %w", err)
 		}
 		count, err := insertFormerNames(tx, data, teamIDs)
 		if err != nil {
-			log.Fatalf("failed to insert former names: %v", err)
+			return fmt.Errorf("failed to insert former names: %w", err)
 		}
 		log.Printf("Former names imported: %d rows", count)
 	}
 
 	// Commit the transaction.
 	if err = tx.Commit(); err != nil {
-		log.Fatalf("failed to commit transaction: %v", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 	log.Println("Import completed successfully")
+	return nil
 }
 
 // --- download / file helpers -------------------------------------------------
