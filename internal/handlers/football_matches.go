@@ -1,0 +1,258 @@
+package handlers
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
+)
+
+// defaultLimit is the default number of matches returned per page.
+const defaultLimit = 50
+
+// --- Matches (read) ----------------------------------------------------------
+
+// ListMatches handles GET /api/v1/football/matches
+// Accepts optional ?limit= and ?offset= query parameters for pagination.
+func (h *FootballHandler) ListMatches(c *gin.Context) {
+	limit := defaultLimit
+	offset := 0
+
+	if v := c.Query("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n <= 0 {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "limit must be a positive integer"})
+			return
+		}
+		limit = n
+	}
+	if v := c.Query("offset"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "offset must be a non-negative integer"})
+			return
+		}
+		offset = n
+	}
+
+	matches, err := h.repo.ListMatches(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	responses := make([]models.MatchResponse, 0, len(matches))
+	for _, m := range matches {
+		responses = append(responses, models.MatchResponse{
+			Match: m,
+			Links: matchLinks(m.ID),
+		})
+	}
+
+	c.JSON(http.StatusOK, models.MatchesResponse{
+		Data: responses,
+		Links: []models.Link{
+			{Rel: "self", Href: "/api/v1/football/matches", Method: http.MethodGet},
+		},
+	})
+}
+
+// GetMatch handles GET /api/v1/football/matches/:id
+// Returns the requested match or 404 if it does not exist.
+func (h *FootballHandler) GetMatch(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid match id"})
+		return
+	}
+
+	match, err := h.repo.GetMatchByID(id)
+	if errors.Is(err, models.ErrNotFound) {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "match not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.MatchResponse{
+		Match: match,
+		Links: matchLinks(match.ID),
+	})
+}
+
+// GetHeadToHead handles GET /api/v1/football/head-to-head?teamA=:id&teamB=:id
+// Returns all matches between the two teams.
+func (h *FootballHandler) GetHeadToHead(c *gin.Context) {
+	aStr := c.Query("teamA")
+	bStr := c.Query("teamB")
+	if aStr == "" || bStr == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "teamA and teamB query parameters are required"})
+		return
+	}
+
+	teamA, err := strconv.Atoi(aStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "teamA must be an integer"})
+		return
+	}
+	teamB, err := strconv.Atoi(bStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "teamB must be an integer"})
+		return
+	}
+
+	matches, err := h.repo.GetHeadToHead(teamA, teamB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	responses := make([]models.MatchResponse, 0, len(matches))
+	for _, m := range matches {
+		responses = append(responses, models.MatchResponse{
+			Match: m,
+			Links: matchLinks(m.ID),
+		})
+	}
+
+	c.JSON(http.StatusOK, models.MatchesResponse{
+		Data: responses,
+		Links: []models.Link{
+			{Rel: "self", Href: "/api/v1/football/head-to-head", Method: http.MethodGet},
+		},
+	})
+}
+
+// --- Matches (write) ---------------------------------------------------------
+
+// CreateMatch handles POST /api/v1/football/matches
+// Creates a new match result. Requires JWT authorisation.
+func (h *FootballHandler) CreateMatch(c *gin.Context) {
+	var req models.CreateMatchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Verify the home and away teams exist before inserting.
+	if !h.checkTeamExists(c, req.HomeTeamID, "home team") {
+		return
+	}
+	if !h.checkTeamExists(c, req.AwayTeamID, "away team") {
+		return
+	}
+	// Verify the tournament exists before inserting.
+	if !h.checkTournamentExists(c, req.TournamentID) {
+		return
+	}
+
+	m := models.Match{
+		Date:         req.Date,
+		HomeTeamID:   req.HomeTeamID,
+		AwayTeamID:   req.AwayTeamID,
+		HomeScore:    req.HomeScore,
+		AwayScore:    req.AwayScore,
+		TournamentID: req.TournamentID,
+		City:         req.City,
+		Country:      req.Country,
+		Neutral:      req.Neutral,
+	}
+
+	created, err := h.repo.CreateMatch(m)
+	if errors.Is(err, models.ErrConflict) {
+		c.JSON(http.StatusConflict, models.ErrorResponse{Error: "match already exists"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	c.Header("Location", "/api/v1/football/matches/"+strconv.Itoa(created.ID))
+	c.JSON(http.StatusCreated, models.MatchResponse{
+		Match: created,
+		Links: matchLinks(created.ID),
+	})
+}
+
+// UpdateMatch handles PUT /api/v1/football/matches/:id
+// Replaces an existing match record. Requires JWT authorisation.
+func (h *FootballHandler) UpdateMatch(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid match id"})
+		return
+	}
+
+	var req models.UpdateMatchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Verify teams and tournament exist before updating.
+	if !h.checkTeamExists(c, req.HomeTeamID, "home team") {
+		return
+	}
+	if !h.checkTeamExists(c, req.AwayTeamID, "away team") {
+		return
+	}
+	if !h.checkTournamentExists(c, req.TournamentID) {
+		return
+	}
+
+	m := models.Match{
+		Date:         req.Date,
+		HomeTeamID:   req.HomeTeamID,
+		AwayTeamID:   req.AwayTeamID,
+		HomeScore:    req.HomeScore,
+		AwayScore:    req.AwayScore,
+		TournamentID: req.TournamentID,
+		City:         req.City,
+		Country:      req.Country,
+		Neutral:      req.Neutral,
+	}
+
+	updated, err := h.repo.UpdateMatch(id, m)
+	if errors.Is(err, models.ErrNotFound) {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "match not found"})
+		return
+	}
+	if errors.Is(err, models.ErrConflict) {
+		c.JSON(http.StatusConflict, models.ErrorResponse{Error: "match already exists"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.MatchResponse{
+		Match: updated,
+		Links: matchLinks(updated.ID),
+	})
+}
+
+// DeleteMatch handles DELETE /api/v1/football/matches/:id
+// Removes a match record. Requires JWT authorisation.
+func (h *FootballHandler) DeleteMatch(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid match id"})
+		return
+	}
+
+	if err := h.repo.DeleteMatch(id); errors.Is(err, models.ErrNotFound) {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "match not found"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
