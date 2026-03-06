@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -90,17 +91,13 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 
 	// Compute previous rating (all matches before last match date) for delta.
 	var prevElo float64
-	var prevDate time.Time
 	if len(matches) > 0 {
-		lastMatch := matches[len(matches)-1]
 		prevMatches := matches[:len(matches)-1]
 		prevRatings := elo.Calculate(prevMatches, cfg)
 		prevElo = prevRatings[id]
 		if prevElo == 0 {
 			prevElo = cfg.DefaultRating
 		}
-		prevDate = lastMatch.Date
-		_ = prevDate
 	} else {
 		prevElo = cfg.DefaultRating
 	}
@@ -114,7 +111,7 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 		ChangeFromPrev:    roundElo(currentElo - prevElo),
 		MatchesConsidered: len(matches),
 		Methodology: elo.Methodology{
-			KFactor:          cfg.KFactor(""),
+			KFactor:          cfg.DefaultKFactor,
 			HomeAdvantage:    cfg.HomeAdvantage,
 			WeightMultiplier: 1.0,
 			FormulaReference: cfg.FormulaRef(),
@@ -372,14 +369,10 @@ func (h *FootballHandler) runEloRecalculation(teamID int) {
 	for id, r := range ratings {
 		sortable = append(sortable, ranked{id, r})
 	}
-	// Sort descending by Elo.
-	for i := 0; i < len(sortable)-1; i++ {
-		for j := i + 1; j < len(sortable); j++ {
-			if sortable[j].elo > sortable[i].elo {
-				sortable[i], sortable[j] = sortable[j], sortable[i]
-			}
-		}
-	}
+	// Sort descending by Elo using an efficient O(n log n) algorithm.
+	sort.Slice(sortable, func(i, j int) bool {
+		return sortable[i].elo > sortable[j].elo
+	})
 
 	for rank, entry := range sortable {
 		_ = h.repo.SaveEloSnapshot(entry.id, endDate, entry.elo, rank+1, matchCount[entry.id])

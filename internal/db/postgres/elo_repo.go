@@ -10,11 +10,6 @@ import (
 // GetMatchesChronological returns matches involving teamID (or all matches when
 // teamID == 0) up to and including endDate, ordered oldest-first.
 func (r *FootballRepo) GetMatchesChronological(teamID int, endDate time.Time) ([]elo.MatchResult, error) {
-	var (
-		rows interface{ Close() error }
-		err  error
-	)
-
 	if teamID == 0 {
 		const q = `
 			SELECT m.id, m.match_date,
@@ -29,14 +24,9 @@ func (r *FootballRepo) GetMatchesChronological(teamID int, endDate time.Time) ([
 		if qErr != nil {
 			return nil, fmt.Errorf("eloRepo.GetMatchesChronological(all): %w", qErr)
 		}
-		rows = sqlRows
-		err = nil
 		defer sqlRows.Close()
 		return scanMatchResults(sqlRows)
 	}
-
-	_ = rows
-	_ = err
 
 	const q = `
 		SELECT m.id, m.match_date,
