@@ -374,3 +374,65 @@ func TestGetTeamElo_ResponseShape(t *testing.T) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// X-Cache-Status header
+// ---------------------------------------------------------------------------
+
+// TestGetEloRankings_CacheStatusMiss verifies that an empty (cache-miss) response
+// sets X-Cache-Status: miss so clients know the cache must be pre-warmed.
+func TestGetEloRankings_CacheStatusMiss(t *testing.T) {
+	r, _ := newEloRouter()
+	w := doRequest(r, http.MethodGet, "/api/v1/football/rankings/elo", nil)
+	assertStatus(t, w, http.StatusOK)
+
+	status := w.Header().Get("X-Cache-Status")
+	if status != "miss" {
+		t.Errorf("expected X-Cache-Status: miss for empty rankings, got %q", status)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting on /recalculate
+// ---------------------------------------------------------------------------
+
+// TestRecalculateEloRankings_RateLimited verifies that a second recalculation
+// request (without ?force=true) within the cooldown window returns 429.
+func TestRecalculateEloRankings_RateLimited(t *testing.T) {
+	// Use a fresh handler+router so the rate-limit state starts clean.
+	mock := &footballMock{}
+	fh := handlers.NewFootballHandler(mock)
+	r := gin.New()
+	r.POST("/api/v1/football/rankings/elo/recalculate", fh.RecalculateEloRankings)
+
+	// First request should be accepted.
+	w1 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+	assertStatus(t, w1, http.StatusAccepted)
+
+	// Wait briefly for the background goroutine to complete and mark lastRun.
+	time.Sleep(50 * time.Millisecond)
+
+	// Second request without force should be rate-limited (429).
+	w2 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+	assertStatus(t, w2, http.StatusTooManyRequests)
+}
+
+// TestRecalculateEloRankings_ForceBypassesRateLimit verifies that ?force=true
+// skips the rate-limit check and returns 202.
+func TestRecalculateEloRankings_ForceBypassesRateLimit(t *testing.T) {
+	mock := &footballMock{}
+	fh := handlers.NewFootballHandler(mock)
+	r := gin.New()
+	r.POST("/api/v1/football/rankings/elo/recalculate", fh.RecalculateEloRankings)
+
+	// First request sets lastRun.
+	w1 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+	assertStatus(t, w1, http.StatusAccepted)
+
+	// Wait briefly for goroutine to finish.
+	time.Sleep(50 * time.Millisecond)
+
+	// Second request with force=true should succeed despite the cooldown.
+	w2 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate?force=true", nil)
+	assertStatus(t, w2, http.StatusAccepted)
+}

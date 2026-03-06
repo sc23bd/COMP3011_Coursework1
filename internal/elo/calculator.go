@@ -49,7 +49,7 @@ func Calculate(matches []MatchResult, cfg Config) RatingMap {
 // CalculateUntil is like Calculate but only considers matches up to and
 // including the given date.
 func CalculateUntil(matches []MatchResult, endDate time.Time, cfg Config) RatingMap {
-	var filtered []MatchResult
+	filtered := make([]MatchResult, 0, len(matches))
 	for _, m := range matches {
 		if !m.Date.After(endDate) {
 			filtered = append(filtered, m)
@@ -103,7 +103,12 @@ func ExpectedResult(homeElo, awayElo, homeAdvantage float64) float64 {
 // the absolute goal difference.
 //
 //	multiplier = 1 + factor * ln(|goalDiff| + 1)
+//
+// A negative factor is treated as zero (no adjustment).
 func GoalMarginMultiplier(goalDiff int, factor float64) float64 {
+	if factor < 0 {
+		factor = 0
+	}
 	abs := math.Abs(float64(goalDiff))
 	return 1.0 + factor*math.Log(abs+1)
 }

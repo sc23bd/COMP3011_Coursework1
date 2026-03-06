@@ -128,18 +128,40 @@ The `POST /api/v1/football/rankings/elo/recalculate` endpoint (JWT-protected)
 triggers a background goroutine that computes ratings for all teams and writes
 snapshots to the `football_elo_cache` table.
 
-Cached snapshots are read by `GET /rankings/elo?date=YYYY-MM-DD`.  When no
-snapshot exists for the requested date the rankings endpoint returns an empty
-list (pre-warm the cache with the recalculate endpoint first).
+### Cache-miss behavior
+
+Cached snapshots are read by `GET /rankings/elo?date=YYYY-MM-DD`.  When **no
+snapshot exists** for the requested date the rankings endpoint returns an **empty
+`data` array** with `X-Cache-Status: miss` response header.  Pre-warm the cache
+by calling `POST /rankings/elo/recalculate` before querying rankings.
+
+When the cache **is** populated, the response carries `X-Cache-Status: hit`.
 
 Individual team Elo queries (`GET /teams/:id/elo`) always compute on-demand
 from the live `football_matches` data, so they are always accurate without
 requiring a pre-warm step.
 
+### Rate limiting on `/recalculate`
+
+To prevent accidental or malicious DoS via repeated recalculation requests, the
+endpoint enforces the following constraints:
+
+| Condition | Response |
+|-----------|----------|
+| Recalculation is already running | `429 Too Many Requests` |
+| Last run completed < 5 minutes ago | `429 Too Many Requests` |
+| `?force=true` supplied | Bypasses the 5-minute cooldown |
+
+All recalculation activity (start, finish, errors) is logged at `INFO` level
+with duration so administrators can monitor performance.
+
 ---
 
 ## Limitations
 
+* **Cache staleness** — rankings snapshots (`GET /rankings/elo`) are computed at
+  a point in time.  Use `POST /recalculate` to refresh them.  Individual team
+  Elo queries are always computed live from the match database.
 * **No player-level weighting** — the model treats every outfield player
   identically; substitutions, injuries, and squad quality are not considered.
 * **Friendly match weighting** — the low K-factor (5) means friendlies barely

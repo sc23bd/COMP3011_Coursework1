@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -269,9 +270,14 @@ func (h *FootballHandler) GetEloRankings(c *gin.Context) {
 		return
 	}
 
-	if rankings == nil {
+	// Signal whether the response was served from a pre-computed snapshot or is
+	// empty due to a cache miss (the cache must be pre-warmed via /recalculate).
+	cacheStatus := "hit"
+	if len(rankings) == 0 {
+		cacheStatus = "miss"
 		rankings = []elo.RankingEntry{}
 	}
+	c.Header("X-Cache-Status", cacheStatus)
 
 	// Attach HATEOAS links to each entry.
 	for i := range rankings {
@@ -296,6 +302,7 @@ func (h *FootballHandler) GetEloRankings(c *gin.Context) {
 
 // RecalculateEloRankings handles POST /api/v1/football/rankings/elo/recalculate
 // Triggers a background recalculation of Elo ratings for all (or one) team.
+// Requests are rate-limited to one run per 5 minutes; concurrent runs return 429.
 //
 // @Summary      Recalculate Elo rankings
 // @Description  Triggers background Elo recalculation (admin). Optionally scoped to one team.
@@ -306,6 +313,7 @@ func (h *FootballHandler) GetEloRankings(c *gin.Context) {
 // @Success      202  {object}  elo.RecalculateResponse  "Recalculation started"
 // @Failure      400  {object}  models.ErrorResponse     "Invalid parameters"
 // @Failure      401  {object}  models.ErrorResponse     "Unauthorized"
+// @Failure      429  {object}  models.ErrorResponse     "Recalculation already running or rate limit exceeded"
 // @Failure      500  {object}  models.ErrorResponse     "Internal server error"
 // @Security     Bearer
 // @Router       /football/rankings/elo/recalculate [post]
@@ -328,6 +336,25 @@ func (h *FootballHandler) RecalculateEloRankings(c *gin.Context) {
 		teamID = v
 	}
 
+	// Rate limiting: reject if a recalculation is already running or if the last
+	// one completed less than 5 minutes ago (unless ?force=true is set).
+	force := c.Query("force") == "true"
+	h.eloRecalc.mu.Lock()
+	if h.eloRecalc.running {
+		h.eloRecalc.mu.Unlock()
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusTooManyRequests, models.ErrorResponse{Error: "recalculation already in progress"})
+		return
+	}
+	if !force && !h.eloRecalc.lastRun.IsZero() && time.Since(h.eloRecalc.lastRun) < 5*time.Minute {
+		h.eloRecalc.mu.Unlock()
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusTooManyRequests, models.ErrorResponse{Error: "recalculation rate limit: wait 5 minutes between runs or use ?force=true"})
+		return
+	}
+	h.eloRecalc.running = true
+	h.eloRecalc.mu.Unlock()
+
 	// Launch background goroutine; respond immediately with 202.
 	go h.runEloRecalculation(teamID)
 
@@ -342,12 +369,25 @@ func (h *FootballHandler) RecalculateEloRankings(c *gin.Context) {
 
 // runEloRecalculation performs the full Elo recalculation for all teams (teamID=0)
 // or a single team and persists snapshots into the cache table.
+// It always marks the recalculation as complete (running=false) when done.
 func (h *FootballHandler) runEloRecalculation(teamID int) {
+	start := time.Now()
+	log.Printf("Elo recalculation started (teamID=%d)", teamID)
+
+	defer func() {
+		h.eloRecalc.mu.Lock()
+		h.eloRecalc.running = false
+		h.eloRecalc.lastRun = time.Now()
+		h.eloRecalc.mu.Unlock()
+		log.Printf("Elo recalculation finished (teamID=%d, duration=%s)", teamID, time.Since(start))
+	}()
+
 	cfg := elo.DefaultConfig()
 	endDate := time.Now().UTC()
 
 	matches, err := h.repo.GetMatchesChronological(teamID, endDate)
 	if err != nil {
+		log.Printf("Elo recalculation error fetching matches (teamID=%d): %v", teamID, err)
 		return
 	}
 
@@ -365,7 +405,7 @@ func (h *FootballHandler) runEloRecalculation(teamID int) {
 		id  int
 		elo float64
 	}
-	var sortable []ranked
+	sortable := make([]ranked, 0, len(ratings))
 	for id, r := range ratings {
 		sortable = append(sortable, ranked{id, r})
 	}
@@ -374,8 +414,15 @@ func (h *FootballHandler) runEloRecalculation(teamID int) {
 		return sortable[i].elo > sortable[j].elo
 	})
 
+	var saveErrors int
 	for rank, entry := range sortable {
-		_ = h.repo.SaveEloSnapshot(entry.id, endDate, entry.elo, rank+1, matchCount[entry.id])
+		if saveErr := h.repo.SaveEloSnapshot(entry.id, endDate, entry.elo, rank+1, matchCount[entry.id]); saveErr != nil {
+			log.Printf("Elo recalculation error saving snapshot (teamID=%d, rank=%d): %v", entry.id, rank+1, saveErr)
+			saveErrors++
+		}
+	}
+	if saveErrors > 0 {
+		log.Printf("Elo recalculation completed with %d snapshot save error(s) (teamID=%d)", saveErrors, teamID)
 	}
 }
 

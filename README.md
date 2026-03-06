@@ -402,8 +402,8 @@ See [docs/elo-methodology.md](docs/elo-methodology.md) for the full formula and 
 |--------|------|------|-------------|--------------|
 | `GET` | `/teams/:id/elo` | — | Get current or historical Elo rating for a team | `?date=YYYY-MM-DD`, `?include_history=true` |
 | `GET` | `/teams/:id/elo/timeline` | — | Time-series of Elo changes for a team | `?start_date=`, `?end_date=`, `?resolution=match\|month\|year` |
-| `GET` | `/rankings/elo` | — | Global Elo rankings snapshot | `?date=YYYY-MM-DD`, `?region=europe\|asia\|…`, `?limit=50&offset=0` |
-| `POST` | `/rankings/elo/recalculate` | JWT | Trigger background Elo recalculation (admin) | `?team_id=optional`, `?force=true` |
+| `GET` | `/rankings/elo` | — | Global Elo rankings snapshot (returns empty + `X-Cache-Status: miss` if cache not pre-warmed) | `?date=YYYY-MM-DD`, `?region=europe\|asia\|…`, `?limit=50&offset=0` |
+| `POST` | `/rankings/elo/recalculate` | JWT | Trigger background Elo recalculation (admin). Rate-limited: once per 5 min; use `?force=true` to bypass. Returns 429 if already running. | `?team_id=optional`, `?force=true` |
 
 **Elo response example** (`GET /teams/45/elo?date=2014-07-13`):
 
@@ -445,6 +445,7 @@ See [docs/elo-methodology.md](docs/elo-methodology.md) for the full formula and 
 | `Cache-Control` | `public, max-age=60` on GET; `no-store` on mutations and the recalculate endpoint |
 | `Location` | Set to the new resource URI on `201 Created` |
 | `X-Elo-Computed-At` | Timestamp of when the Elo rating was computed (Elo endpoints only) |
+| `X-Cache-Status` | `hit` or `miss` on `GET /rankings/elo`; `miss` means no snapshot exists for the date — pre-warm with `/recalculate` |
 
 ---
 

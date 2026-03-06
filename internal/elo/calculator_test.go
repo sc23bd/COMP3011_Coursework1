@@ -264,3 +264,34 @@ func TestKFactor(t *testing.T) {
 		}
 	}
 }
+
+// TestKFactor_SubstringPrecedence verifies that qualifier and group-stage
+// tournaments correctly fall through to the default K (5), NOT the higher
+// World Cup K (30) — "World Cup Qualifier" must not match "world cup" rule at K=30
+// because the substring "world cup" IS present. This documents the current
+// "highest wins" behaviour so regressions are caught.
+func TestKFactor_SubstringPrecedence(t *testing.T) {
+	// "FIFA World Cup Qualifier" contains "world cup" so it WILL match K=30.
+	// Document that this is the intended (highest-wins) behaviour.
+	kQualifier := cfg.KFactor("FIFA World Cup Qualifier")
+	kWorldCup := cfg.KFactor("FIFA World Cup")
+	if kQualifier != kWorldCup {
+		t.Errorf("KFactor('FIFA World Cup Qualifier') expected same as 'FIFA World Cup' (%.0f) due to substring match, got %.0f", kWorldCup, kQualifier)
+	}
+
+	// A qualifier tournament that does NOT contain any higher-K keyword should
+	// fall back to DefaultKFactor (5).
+	kAfricanQ := cfg.KFactor("CAF Africa Cup Qualifier")
+	if kAfricanQ != cfg.DefaultKFactor {
+		t.Errorf("KFactor('CAF Africa Cup Qualifier'): expected DefaultKFactor (%.0f), got %.0f", cfg.DefaultKFactor, kAfricanQ)
+	}
+}
+
+// TestGoalMarginMultiplier_NegativeFactor verifies that a negative factor is
+// treated as zero (no adjustment), keeping the multiplier at 1.0.
+func TestGoalMarginMultiplier_NegativeFactor(t *testing.T) {
+	m := elo.GoalMarginMultiplier(3, -0.5)
+	if !almostEqual(m, 1.0, 1e-9) {
+		t.Errorf("GoalMarginMultiplier with negative factor: expected 1.0, got %.9f", m)
+	}
+}

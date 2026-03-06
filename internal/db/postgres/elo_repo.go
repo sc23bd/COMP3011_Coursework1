@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -105,11 +106,7 @@ func (r *FootballRepo) GetEloRankings(asOf time.Time, _ string, limit, offset in
 // --- helpers -----------------------------------------------------------------
 
 // scanMatchResults reads elo.MatchResult rows from an open *sql.Rows cursor.
-func scanMatchResults(rows interface {
-	Next() bool
-	Scan(dest ...interface{}) error
-	Err() error
-}) ([]elo.MatchResult, error) {
+func scanMatchResults(rows *sql.Rows) ([]elo.MatchResult, error) {
 	var results []elo.MatchResult
 	for rows.Next() {
 		var mr elo.MatchResult
