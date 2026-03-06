@@ -265,22 +265,26 @@ func TestKFactor(t *testing.T) {
 	}
 }
 
-// TestKFactor_SubstringPrecedence verifies that qualifier and group-stage
-// tournaments correctly fall through to the default K (5), NOT the higher
-// World Cup K (30) — "World Cup Qualifier" must not match "world cup" rule at K=30
-// because the substring "world cup" IS present. This documents the current
-// "highest wins" behaviour so regressions are caught.
+// TestKFactor_SubstringPrecedence documents the "highest wins" K-factor
+// selection behaviour when tournament names contain multiple matching substrings.
+//
+// Key behaviours verified:
+//   - "FIFA World Cup Qualifier" DOES contain "world cup" as a substring, so it
+//     correctly gets K=30 under the current "highest wins" rule.
+//   - A tournament that contains NONE of the high-K keywords falls back to
+//     DefaultKFactor (5).
 func TestKFactor_SubstringPrecedence(t *testing.T) {
-	// "FIFA World Cup Qualifier" contains "world cup" so it WILL match K=30.
-	// Document that this is the intended (highest-wins) behaviour.
+	// "FIFA World Cup Qualifier" contains the substring "world cup", so the
+	// current highest-wins logic assigns it K=30 — same as a full World Cup match.
+	// This is the documented behaviour; the test ensures regressions are caught.
 	kQualifier := cfg.KFactor("FIFA World Cup Qualifier")
 	kWorldCup := cfg.KFactor("FIFA World Cup")
 	if kQualifier != kWorldCup {
 		t.Errorf("KFactor('FIFA World Cup Qualifier') expected same as 'FIFA World Cup' (%.0f) due to substring match, got %.0f", kWorldCup, kQualifier)
 	}
 
-	// A qualifier tournament that does NOT contain any higher-K keyword should
-	// fall back to DefaultKFactor (5).
+	// A qualifier that does NOT contain any high-K keyword should fall back to
+	// DefaultKFactor (5).
 	kAfricanQ := cfg.KFactor("CAF Africa Cup Qualifier")
 	if kAfricanQ != cfg.DefaultKFactor {
 		t.Errorf("KFactor('CAF Africa Cup Qualifier'): expected DefaultKFactor (%.0f), got %.0f", cfg.DefaultKFactor, kAfricanQ)

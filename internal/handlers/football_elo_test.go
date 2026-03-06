@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -396,43 +397,120 @@ func TestGetEloRankings_CacheStatusMiss(t *testing.T) {
 // Rate limiting on /recalculate
 // ---------------------------------------------------------------------------
 
+// blockingMock wraps footballMock with a channel that allows tests to hold the
+// background goroutine open until the test signals it to proceed.
+type blockingMock struct {
+	footballMock
+	// block is closed by the test to unblock the goroutine.
+	block chan struct{}
+	// started is closed by the goroutine to signal that it has started.
+	started chan struct{}
+}
+
+func newBlockingMock() *blockingMock {
+	return &blockingMock{
+		block:   make(chan struct{}),
+		started: make(chan struct{}),
+	}
+}
+
+// GetMatchesChronological blocks until the test closes the block channel,
+// then delegates to the embedded mock.
+func (m *blockingMock) GetMatchesChronological(teamID int, endDate time.Time) ([]elomodels.MatchResult, error) {
+	// Signal that the goroutine has started.
+	select {
+	case <-m.started:
+		// already closed
+	default:
+		close(m.started)
+	}
+	// Block until the test lets us proceed.
+	<-m.block
+	return m.footballMock.GetMatchesChronological(teamID, endDate)
+}
+
+// TestRecalculateEloRankings_AlreadyRunning verifies that a second recalculation
+// request while the first is still in progress returns 429.
+func TestRecalculateEloRankings_AlreadyRunning(t *testing.T) {
+	bm := newBlockingMock()
+	fh := handlers.NewFootballHandler(bm)
+	r := gin.New()
+	r.POST("/api/v1/football/rankings/elo/recalculate", fh.RecalculateEloRankings)
+
+	// First request; goroutine will block inside GetMatchesChronological.
+	w1 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+	assertStatus(t, w1, http.StatusAccepted)
+
+	// Wait until the goroutine has actually started (running=true is set before
+	// GetMatchesChronological is called, so this ensures the state is in place).
+	<-bm.started
+
+	// Second request while goroutine is still running → 429.
+	w2 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+	assertStatus(t, w2, http.StatusTooManyRequests)
+
+	// Unblock the goroutine so the test exits cleanly.
+	close(bm.block)
+}
+
 // TestRecalculateEloRankings_RateLimited verifies that a second recalculation
-// request (without ?force=true) within the cooldown window returns 429.
+// request (without ?force=true) within the 5-minute cooldown window returns 429
+// with the cooldown-specific error message.
 func TestRecalculateEloRankings_RateLimited(t *testing.T) {
-	// Use a fresh handler+router so the rate-limit state starts clean.
 	mock := &footballMock{}
 	fh := handlers.NewFootballHandler(mock)
 	r := gin.New()
 	r.POST("/api/v1/football/rankings/elo/recalculate", fh.RecalculateEloRankings)
 
-	// First request should be accepted.
+	// First request.
 	w1 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
 	assertStatus(t, w1, http.StatusAccepted)
 
-	// Wait briefly for the background goroutine to complete and mark lastRun.
-	time.Sleep(50 * time.Millisecond)
-
-	// Second request without force should be rate-limited (429).
-	w2 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
-	assertStatus(t, w2, http.StatusTooManyRequests)
+	// Poll until we receive the COOLDOWN 429 (not the "already running" 429).
+	// The goroutine finishes very quickly with the mock, but we wait for
+	// running=false AND lastRun set.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		w := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+		if w.Code == http.StatusTooManyRequests {
+			var errResp models.ErrorResponse
+			_ = json.NewDecoder(w.Body).Decode(&errResp)
+			if strings.Contains(errResp.Error, "rate limit") {
+				return // cooldown 429 confirmed
+			}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("expected rate-limit (cooldown) 429 response within 2 seconds")
 }
 
 // TestRecalculateEloRankings_ForceBypassesRateLimit verifies that ?force=true
-// skips the rate-limit check and returns 202.
+// skips the rate-limit cooldown check and returns 202.
 func TestRecalculateEloRankings_ForceBypassesRateLimit(t *testing.T) {
 	mock := &footballMock{}
 	fh := handlers.NewFootballHandler(mock)
 	r := gin.New()
 	r.POST("/api/v1/football/rankings/elo/recalculate", fh.RecalculateEloRankings)
 
-	// First request sets lastRun.
+	// First request.
 	w1 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
 	assertStatus(t, w1, http.StatusAccepted)
 
-	// Wait briefly for goroutine to finish.
-	time.Sleep(50 * time.Millisecond)
-
-	// Second request with force=true should succeed despite the cooldown.
-	w2 := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate?force=true", nil)
-	assertStatus(t, w2, http.StatusAccepted)
+	// Poll until the COOLDOWN 429 appears (goroutine finished, lastRun set).
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		w := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
+		if w.Code == http.StatusTooManyRequests {
+			var errResp models.ErrorResponse
+			_ = json.NewDecoder(w.Body).Decode(&errResp)
+			if strings.Contains(errResp.Error, "rate limit") {
+				// Cooldown is active. Verify force=true bypasses it.
+				wForce := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate?force=true", nil)
+				assertStatus(t, wForce, http.StatusAccepted)
+				return
+			}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("cooldown did not become active within 2 seconds")
 }
