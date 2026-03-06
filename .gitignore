@@ -30,3 +30,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Frontend build artifacts and dependencies
+frontend/node_modules/
+frontend/dist/
