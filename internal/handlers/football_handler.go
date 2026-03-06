@@ -7,6 +7,8 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/db"
@@ -16,6 +18,13 @@ import (
 // FootballHandler holds the dependencies required by the football HTTP handlers.
 type FootballHandler struct {
 	repo db.FootballRepository
+
+	// eloRecalc tracks background recalculation state for rate limiting.
+	eloRecalc struct {
+		mu      sync.Mutex
+		lastRun time.Time
+		running bool
+	}
 }
 
 // NewFootballHandler constructs a FootballHandler backed by the provided repository.

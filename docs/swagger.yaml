@@ -1,5 +1,116 @@
 basePath: /api/v1
 definitions:
+  elo.Methodology:
+    properties:
+      formulaReference:
+        type: string
+      homeAdvantage:
+        type: number
+      kFactor:
+        type: number
+      weightMultiplier:
+        type: number
+    type: object
+  elo.RankingEntry:
+    properties:
+      elo:
+        type: number
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      rank:
+        type: integer
+      teamId:
+        type: integer
+      teamName:
+        type: string
+    type: object
+  elo.RankingsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/elo.RankingEntry'
+        type: array
+      date:
+        type: string
+      limit:
+        type: integer
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  elo.Rating:
+    properties:
+      changeFromPrevious:
+        type: number
+      date:
+        type: string
+      elo:
+        type: number
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      matchesConsidered:
+        type: integer
+      methodology:
+        $ref: '#/definitions/elo.Methodology'
+      rank:
+        type: integer
+      teamId:
+        type: integer
+      teamName:
+        type: string
+    type: object
+  elo.RecalculateResponse:
+    properties:
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      message:
+        type: string
+    type: object
+  elo.TimelineEntry:
+    properties:
+      change:
+        type: number
+      date:
+        type: string
+      elo:
+        type: number
+      homeAway:
+        description: '"H", "A", or "N"'
+        type: string
+      matchId:
+        type: integer
+      opponent:
+        type: string
+      result:
+        description: '"W", "D", or "L"'
+        type: string
+    type: object
+  elo.TimelineResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/elo.TimelineEntry'
+        type: array
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      teamId:
+        type: integer
+      teamName:
+        type: string
+    type: object
   models.CreateGoalRequest:
     properties:
       ownGoal:
@@ -653,6 +764,86 @@ paths:
       summary: Get goals by player
       tags:
       - players
+  /football/rankings/elo:
+    get:
+      description: Returns a paginated snapshot of global Elo rankings, optionally
+        filtered by region
+      parameters:
+      - description: Point-in-time date (YYYY-MM-DD)
+        in: query
+        name: date
+        type: string
+      - description: Filter by region (e.g. europe, asia)
+        in: query
+        name: region
+        type: string
+      - description: Page size (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Global Elo rankings
+          schema:
+            $ref: '#/definitions/elo.RankingsResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get global Elo rankings
+      tags:
+      - elo
+  /football/rankings/elo/recalculate:
+    post:
+      description: Triggers background Elo recalculation (admin). Optionally scoped
+        to one team.
+      parameters:
+      - description: Limit recalculation to this team
+        in: query
+        name: team_id
+        type: integer
+      - description: Force recalculation even if cache is current
+        in: query
+        name: force
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Recalculation started
+          schema:
+            $ref: '#/definitions/elo.RecalculateResponse'
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "429":
+          description: Recalculation already running or rate limit exceeded
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Recalculate Elo rankings
+      tags:
+      - elo
   /football/teams:
     get:
       description: Get all national teams with HATEOAS links
@@ -822,6 +1013,89 @@ paths:
       summary: Update a team
       tags:
       - teams
+  /football/teams/{id}/elo:
+    get:
+      description: Returns the World Football Elo rating for a team, optionally at
+        a historical date
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Point-in-time date (YYYY-MM-DD); defaults to today
+        in: query
+        name: date
+        type: string
+      - description: Include full rating history
+        in: query
+        name: include_history
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team Elo rating
+          schema:
+            $ref: '#/definitions/elo.Rating'
+        "400":
+          description: Invalid team ID or date
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get team Elo rating
+      tags:
+      - elo
+  /football/teams/{id}/elo/timeline:
+    get:
+      description: Returns the full time-series of Elo rating changes for a team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: 'Aggregation: match|month|year (default: match)'
+        in: query
+        name: resolution
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team Elo timeline
+          schema:
+            $ref: '#/definitions/elo.TimelineResponse'
+        "400":
+          description: Invalid team ID or date
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get team Elo timeline
+      tags:
+      - elo
   /football/teams/{id}/history:
     get:
       description: Get historical names for a specific team

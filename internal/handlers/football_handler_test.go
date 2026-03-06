@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
+	elomodels "github.com/sc23bd/COMP3011_Coursework1/internal/elo"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
@@ -252,6 +253,39 @@ func (m *footballMock) DeleteShootout(matchID int) error {
 		}
 	}
 	return models.ErrNotFound
+}
+
+// --- Elo implementations ----------------------------------------------------
+
+func (m *footballMock) GetMatchesChronological(teamID int, endDate time.Time) ([]elomodels.MatchResult, error) {
+	var results []elomodels.MatchResult
+	for _, match := range m.matches {
+		if match.Date.After(endDate) {
+			continue
+		}
+		if teamID != 0 && match.HomeTeamID != teamID && match.AwayTeamID != teamID {
+			continue
+		}
+		results = append(results, elomodels.MatchResult{
+			MatchID:    match.ID,
+			Date:       match.Date,
+			HomeTeamID: match.HomeTeamID,
+			AwayTeamID: match.AwayTeamID,
+			HomeScore:  match.HomeScore,
+			AwayScore:  match.AwayScore,
+			Tournament: match.Tournament,
+			Neutral:    match.Neutral,
+		})
+	}
+	return results, nil
+}
+
+func (m *footballMock) SaveEloSnapshot(_ int, _ time.Time, _ float64, _ int, _ int) error {
+	return nil
+}
+
+func (m *footballMock) GetEloRankings(_ time.Time, _ string, limit, offset int) ([]elomodels.RankingEntry, error) {
+	return nil, nil
 }
 
 // ---------------------------------------------------------------------------

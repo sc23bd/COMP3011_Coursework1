@@ -651,6 +651,127 @@
                 }
             }
         },
+        "/football/rankings/elo": {
+            "get": {
+                "description": "Returns a paginated snapshot of global Elo rankings, optionally filtered by region",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "elo"
+                ],
+                "summary": "Get global Elo rankings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Point-in-time date (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by region (e.g. europe, asia)",
+                        "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Global Elo rankings",
+                        "schema": {
+                            "$ref": "#/definitions/elo.RankingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/football/rankings/elo/recalculate": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Triggers background Elo recalculation (admin). Optionally scoped to one team.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "elo"
+                ],
+                "summary": "Recalculate Elo rankings",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit recalculation to this team",
+                        "name": "team_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Force recalculation even if cache is current",
+                        "name": "force",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Recalculation started",
+                        "schema": {
+                            "$ref": "#/definitions/elo.RecalculateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Recalculation already running or rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/football/teams": {
             "get": {
                 "description": "Get all national teams with HATEOAS links",
@@ -912,6 +1033,130 @@
                 }
             }
         },
+        "/football/teams/{id}/elo": {
+            "get": {
+                "description": "Returns the World Football Elo rating for a team, optionally at a historical date",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "elo"
+                ],
+                "summary": "Get team Elo rating",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Team ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Point-in-time date (YYYY-MM-DD); defaults to today",
+                        "name": "date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include full rating history",
+                        "name": "include_history",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Team Elo rating",
+                        "schema": {
+                            "$ref": "#/definitions/elo.Rating"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid team ID or date",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/football/teams/{id}/elo/timeline": {
+            "get": {
+                "description": "Returns the full time-series of Elo rating changes for a team",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "elo"
+                ],
+                "summary": "Get team Elo timeline",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Team ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Aggregation: match|month|year (default: match)",
+                        "name": "resolution",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Team Elo timeline",
+                        "schema": {
+                            "$ref": "#/definitions/elo.TimelineResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid team ID or date",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/football/teams/{id}/history": {
             "get": {
                 "description": "Get historical names for a specific team",
@@ -961,6 +1206,175 @@
         }
     },
     "definitions": {
+        "elo.Methodology": {
+            "type": "object",
+            "properties": {
+                "formulaReference": {
+                    "type": "string"
+                },
+                "homeAdvantage": {
+                    "type": "number"
+                },
+                "kFactor": {
+                    "type": "number"
+                },
+                "weightMultiplier": {
+                    "type": "number"
+                }
+            }
+        },
+        "elo.RankingEntry": {
+            "type": "object",
+            "properties": {
+                "elo": {
+                    "type": "number"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Link"
+                    }
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "teamId": {
+                    "type": "integer"
+                },
+                "teamName": {
+                    "type": "string"
+                }
+            }
+        },
+        "elo.RankingsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/elo.RankingEntry"
+                    }
+                },
+                "date": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Link"
+                    }
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "elo.Rating": {
+            "type": "object",
+            "properties": {
+                "changeFromPrevious": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "elo": {
+                    "type": "number"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Link"
+                    }
+                },
+                "matchesConsidered": {
+                    "type": "integer"
+                },
+                "methodology": {
+                    "$ref": "#/definitions/elo.Methodology"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "teamId": {
+                    "type": "integer"
+                },
+                "teamName": {
+                    "type": "string"
+                }
+            }
+        },
+        "elo.RecalculateResponse": {
+            "type": "object",
+            "properties": {
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Link"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "elo.TimelineEntry": {
+            "type": "object",
+            "properties": {
+                "change": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "elo": {
+                    "type": "number"
+                },
+                "homeAway": {
+                    "description": "\"H\", \"A\", or \"N\"",
+                    "type": "string"
+                },
+                "matchId": {
+                    "type": "integer"
+                },
+                "opponent": {
+                    "type": "string"
+                },
+                "result": {
+                    "description": "\"W\", \"D\", or \"L\"",
+                    "type": "string"
+                }
+            }
+        },
+        "elo.TimelineResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/elo.TimelineEntry"
+                    }
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Link"
+                    }
+                },
+                "teamId": {
+                    "type": "integer"
+                },
+                "teamName": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CreateGoalRequest": {
             "type": "object",
             "required": [

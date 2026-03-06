@@ -2,7 +2,12 @@
 // Implementations are provided by the postgres subpackage.
 package db
 
-import "github.com/sc23bd/COMP3011_Coursework1/internal/models"
+import (
+	"time"
+
+	"github.com/sc23bd/COMP3011_Coursework1/internal/elo"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
+)
 
 // FootballRepository abstracts the data-access layer for the football feature.
 // It is currently implemented by the PostgreSQL repository.
@@ -44,6 +49,18 @@ type FootballRepository interface {
 
 	// Players
 	GetPlayerGoals(scorer string) ([]models.Goal, error)
+
+	// Elo – read
+	// GetMatchesChronological returns all matches involving teamID up to and
+	// including endDate, ordered oldest-first.  Pass teamID = 0 to fetch all matches.
+	GetMatchesChronological(teamID int, endDate time.Time) ([]elo.MatchResult, error)
+	// GetEloRankings returns a paginated global Elo ranking snapshot.
+	// region is an optional filter (empty = all regions); limit/offset control pagination.
+	GetEloRankings(asOf time.Time, region string, limit, offset int) ([]elo.RankingEntry, error)
+
+	// Elo – write
+	// SaveEloSnapshot upserts a cached Elo rating for one team on one date.
+	SaveEloSnapshot(teamID int, asOf time.Time, rating float64, rank int, matchesPlayed int) error
 }
 
 // UserRepository abstracts the data-access layer for users.

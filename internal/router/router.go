@@ -16,13 +16,13 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
 	docs "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 )
 
 // New returns a configured *gin.Engine.
@@ -70,6 +70,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.GET("/teams", fh.ListTeams)
 			football.GET("/teams/:id", fh.GetTeam)
 			football.GET("/teams/:id/history", fh.GetTeamHistory)
+			football.GET("/teams/:id/elo", fh.GetTeamElo)
+			football.GET("/teams/:id/elo/timeline", fh.GetTeamEloTimeline)
 
 			football.GET("/matches", fh.ListMatches)
 			football.GET("/matches/:id", fh.GetMatch)
@@ -79,6 +81,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.GET("/head-to-head", fh.GetHeadToHead)
 
 			football.GET("/players/:name/goals", fh.GetPlayerGoals)
+
+			football.GET("/rankings/elo", fh.GetEloRankings)
 
 			// Protected mutation endpoints (JWT required)
 			football.POST("/teams", middleware.JWTAuth(jwtService), fh.CreateTeam)
@@ -94,6 +98,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 
 			football.POST("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.CreateShootout)
 			football.DELETE("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.DeleteShootout)
+
+			football.POST("/rankings/elo/recalculate", middleware.JWTAuth(jwtService), fh.RecalculateEloRankings)
 		}
 	}
 
