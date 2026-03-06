@@ -9,15 +9,15 @@ import (
 
 // Rating holds the Elo rating and supporting metadata for one team at a point in time.
 type Rating struct {
-	TeamID           int       `json:"teamId"`
-	TeamName         string    `json:"teamName"`
-	Date             time.Time `json:"date"`
-	Elo              float64   `json:"elo"`
-	Rank             int       `json:"rank,omitempty"`
-	ChangeFromPrev   float64   `json:"changeFromPrevious"`
-	MatchesConsidered int      `json:"matchesConsidered"`
-	Methodology      Methodology `json:"methodology"`
-	Links            []models.Link `json:"links"`
+	TeamID            int           `json:"teamId"`
+	TeamName          string        `json:"teamName"`
+	Date              time.Time     `json:"date"`
+	Elo               float64       `json:"elo"`
+	Rank              int           `json:"rank,omitempty"`
+	ChangeFromPrev    float64       `json:"changeFromPrevious"`
+	MatchesConsidered int           `json:"matchesConsidered"`
+	Methodology       Methodology   `json:"methodology"`
+	Links             []models.Link `json:"links"`
 }
 
 // Methodology describes the parameters used to produce a rating.
@@ -30,13 +30,13 @@ type Methodology struct {
 
 // TimelineEntry represents the Elo value at a single point in the team's history.
 type TimelineEntry struct {
-	Date      time.Time `json:"date"`
-	Elo       float64   `json:"elo"`
-	Change    float64   `json:"change"`
-	MatchID   int       `json:"matchId,omitempty"`
-	Opponent  string    `json:"opponent,omitempty"`
-	Result    string    `json:"result,omitempty"`   // "W", "D", or "L"
-	HomeAway  string    `json:"homeAway,omitempty"` // "H", "A", or "N"
+	Date     time.Time `json:"date"`
+	Elo      float64   `json:"elo"`
+	Change   float64   `json:"change"`
+	MatchID  int       `json:"matchId,omitempty"`
+	Opponent string    `json:"opponent,omitempty"`
+	Result   string    `json:"result,omitempty"`   // "W", "D", or "L"
+	HomeAway string    `json:"homeAway,omitempty"` // "H", "A", or "N"
 }
 
 // TimelineResponse wraps a slice of TimelineEntry values with HATEOAS links.

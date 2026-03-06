@@ -17,16 +17,16 @@ const defaultLimit = 50
 // ListMatches handles GET /api/v1/football/matches
 // Accepts optional ?limit= and ?offset= query parameters for pagination.
 //
-// @Summary      List all matches
-// @Description  Get all matches with pagination support
-// @Tags         matches
-// @Produce      json
-// @Param        limit   query     int  false  "Number of results per page"  default(50)
-// @Param        offset  query     int  false  "Offset for pagination"       default(0)
-// @Success      200  {object}  models.MatchesResponse  "List of matches"
-// @Failure      400  {object}  models.ErrorResponse    "Invalid query parameters"
-// @Failure      500  {object}  models.ErrorResponse    "Internal server error"
-// @Router       /football/matches [get]
+//	@Summary		List all matches
+//	@Description	Get all matches with pagination support
+//	@Tags			matches
+//	@Produce		json
+//	@Param			limit	query		int						false	"Number of results per page"	default(50)
+//	@Param			offset	query		int						false	"Offset for pagination"			default(0)
+//	@Success		200		{object}	models.MatchesResponse	"List of matches"
+//	@Failure		400		{object}	models.ErrorResponse	"Invalid query parameters"
+//	@Failure		500		{object}	models.ErrorResponse	"Internal server error"
+//	@Router			/football/matches [get]
 func (h *FootballHandler) ListMatches(c *gin.Context) {
 	limit := defaultLimit
 	offset := 0
@@ -73,16 +73,16 @@ func (h *FootballHandler) ListMatches(c *gin.Context) {
 // GetMatch handles GET /api/v1/football/matches/:id
 // Returns the requested match or 404 if it does not exist.
 //
-// @Summary      Get a match by ID
-// @Description  Get detailed information about a specific match
-// @Tags         matches
-// @Produce      json
-// @Param        id   path      int  true  "Match ID"
-// @Success      200  {object}  models.MatchResponse    "Match details"
-// @Failure      400  {object}  models.ErrorResponse    "Invalid match ID"
-// @Failure      404  {object}  models.ErrorResponse    "Match not found"
-// @Failure      500  {object}  models.ErrorResponse    "Internal server error"
-// @Router       /football/matches/{id} [get]
+//	@Summary		Get a match by ID
+//	@Description	Get detailed information about a specific match
+//	@Tags			matches
+//	@Produce		json
+//	@Param			id	path		int						true	"Match ID"
+//	@Success		200	{object}	models.MatchResponse	"Match details"
+//	@Failure		400	{object}	models.ErrorResponse	"Invalid match ID"
+//	@Failure		404	{object}	models.ErrorResponse	"Match not found"
+//	@Failure		500	{object}	models.ErrorResponse	"Internal server error"
+//	@Router			/football/matches/{id} [get]
 func (h *FootballHandler) GetMatch(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -109,16 +109,16 @@ func (h *FootballHandler) GetMatch(c *gin.Context) {
 // GetHeadToHead handles GET /api/v1/football/head-to-head?teamA=:id&teamB=:id
 // Returns all matches between the two teams.
 //
-// @Summary      Get head-to-head matches
-// @Description  Get all matches between two specific teams
-// @Tags         matches
-// @Produce      json
-// @Param        teamA  query     int  true  "First team ID"
-// @Param        teamB  query     int  true  "Second team ID"
-// @Success      200  {object}  models.MatchesResponse  "Head-to-head matches"
-// @Failure      400  {object}  models.ErrorResponse    "Invalid query parameters"
-// @Failure      500  {object}  models.ErrorResponse    "Internal server error"
-// @Router       /football/head-to-head [get]
+//	@Summary		Get head-to-head matches
+//	@Description	Get all matches between two specific teams
+//	@Tags			matches
+//	@Produce		json
+//	@Param			teamA	query		int						true	"First team ID"
+//	@Param			teamB	query		int						true	"Second team ID"
+//	@Success		200		{object}	models.MatchesResponse	"Head-to-head matches"
+//	@Failure		400		{object}	models.ErrorResponse	"Invalid query parameters"
+//	@Failure		500		{object}	models.ErrorResponse	"Internal server error"
+//	@Router			/football/head-to-head [get]
 func (h *FootballHandler) GetHeadToHead(c *gin.Context) {
 	aStr := c.Query("teamA")
 	bStr := c.Query("teamB")

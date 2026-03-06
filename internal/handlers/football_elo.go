@@ -33,18 +33,18 @@ func eloLinks(teamID int, dateStr string) []models.Link {
 // GetTeamElo handles GET /api/v1/football/teams/:id/elo
 // Returns the current or historical Elo rating for a team.
 //
-// @Summary      Get team Elo rating
-// @Description  Returns the World Football Elo rating for a team, optionally at a historical date
-// @Tags         elo
-// @Produce      json
-// @Param        id              path      int     true   "Team ID"
-// @Param        date            query     string  false  "Point-in-time date (YYYY-MM-DD); defaults to today"
-// @Param        include_history query     bool    false  "Include full rating history"
-// @Success      200  {object}  elo.Rating           "Team Elo rating"
-// @Failure      400  {object}  models.ErrorResponse "Invalid team ID or date"
-// @Failure      404  {object}  models.ErrorResponse "Team not found"
-// @Failure      500  {object}  models.ErrorResponse "Internal server error"
-// @Router       /football/teams/{id}/elo [get]
+//	@Summary		Get team Elo rating
+//	@Description	Returns the World Football Elo rating for a team, optionally at a historical date
+//	@Tags			elo
+//	@Produce		json
+//	@Param			id				path		int						true	"Team ID"
+//	@Param			date			query		string					false	"Point-in-time date (YYYY-MM-DD); defaults to today"
+//	@Param			include_history	query		bool					false	"Include full rating history"
+//	@Success		200				{object}	elo.Rating				"Team Elo rating"
+//	@Failure		400				{object}	models.ErrorResponse	"Invalid team ID or date"
+//	@Failure		404				{object}	models.ErrorResponse	"Team not found"
+//	@Failure		500				{object}	models.ErrorResponse	"Internal server error"
+//	@Router			/football/teams/{id}/elo [get]
 func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -124,19 +124,19 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 // GetTeamEloTimeline handles GET /api/v1/football/teams/:id/elo/timeline
 // Returns the time-series of Elo changes for a team.
 //
-// @Summary      Get team Elo timeline
-// @Description  Returns the full time-series of Elo rating changes for a team
-// @Tags         elo
-// @Produce      json
-// @Param        id          path      int     true   "Team ID"
-// @Param        start_date  query     string  false  "Start date (YYYY-MM-DD)"
-// @Param        end_date    query     string  false  "End date (YYYY-MM-DD)"
-// @Param        resolution  query     string  false  "Aggregation: match|month|year (default: match)"
-// @Success      200  {object}  elo.TimelineResponse  "Team Elo timeline"
-// @Failure      400  {object}  models.ErrorResponse  "Invalid team ID or date"
-// @Failure      404  {object}  models.ErrorResponse  "Team not found"
-// @Failure      500  {object}  models.ErrorResponse  "Internal server error"
-// @Router       /football/teams/{id}/elo/timeline [get]
+//	@Summary		Get team Elo timeline
+//	@Description	Returns the full time-series of Elo rating changes for a team
+//	@Tags			elo
+//	@Produce		json
+//	@Param			id			path		int						true	"Team ID"
+//	@Param			start_date	query		string					false	"Start date (YYYY-MM-DD)"
+//	@Param			end_date	query		string					false	"End date (YYYY-MM-DD)"
+//	@Param			resolution	query		string					false	"Aggregation: match|month|year (default: match)"
+//	@Success		200			{object}	elo.TimelineResponse	"Team Elo timeline"
+//	@Failure		400			{object}	models.ErrorResponse	"Invalid team ID or date"
+//	@Failure		404			{object}	models.ErrorResponse	"Team not found"
+//	@Failure		500			{object}	models.ErrorResponse	"Internal server error"
+//	@Router			/football/teams/{id}/elo/timeline [get]
 func (h *FootballHandler) GetTeamEloTimeline(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -216,18 +216,18 @@ func (h *FootballHandler) GetTeamEloTimeline(c *gin.Context) {
 // GetEloRankings handles GET /api/v1/football/rankings/elo
 // Returns a global Elo rankings snapshot with pagination.
 //
-// @Summary      Get global Elo rankings
-// @Description  Returns a paginated snapshot of global Elo rankings, optionally filtered by region
-// @Tags         elo
-// @Produce      json
-// @Param        date    query  string  false  "Point-in-time date (YYYY-MM-DD)"
-// @Param        region  query  string  false  "Filter by region (e.g. europe, asia)"
-// @Param        limit   query  int     false  "Page size (default 50)"
-// @Param        offset  query  int     false  "Page offset (default 0)"
-// @Success      200  {object}  elo.RankingsResponse  "Global Elo rankings"
-// @Failure      400  {object}  models.ErrorResponse  "Invalid query parameters"
-// @Failure      500  {object}  models.ErrorResponse  "Internal server error"
-// @Router       /football/rankings/elo [get]
+//	@Summary		Get global Elo rankings
+//	@Description	Returns a paginated snapshot of global Elo rankings, optionally filtered by region
+//	@Tags			elo
+//	@Produce		json
+//	@Param			date	query		string					false	"Point-in-time date (YYYY-MM-DD)"
+//	@Param			region	query		string					false	"Filter by region (e.g. europe, asia)"
+//	@Param			limit	query		int						false	"Page size (default 50)"
+//	@Param			offset	query		int						false	"Page offset (default 0)"
+//	@Success		200		{object}	elo.RankingsResponse	"Global Elo rankings"
+//	@Failure		400		{object}	models.ErrorResponse	"Invalid query parameters"
+//	@Failure		500		{object}	models.ErrorResponse	"Internal server error"
+//	@Router			/football/rankings/elo [get]
 func (h *FootballHandler) GetEloRankings(c *gin.Context) {
 	asOf := time.Now().UTC()
 	dateStr := c.Query("date")
@@ -307,19 +307,19 @@ func (h *FootballHandler) GetEloRankings(c *gin.Context) {
 // Triggers a background recalculation of Elo ratings for all (or one) team.
 // Requests are rate-limited to one run per 5 minutes; concurrent runs return 429.
 //
-// @Summary      Recalculate Elo rankings
-// @Description  Triggers background Elo recalculation (admin). Optionally scoped to one team.
-// @Tags         elo
-// @Produce      json
-// @Param        team_id  query  int   false  "Limit recalculation to this team"
-// @Param        force    query  bool  false  "Force recalculation even if cache is current"
-// @Success      202  {object}  elo.RecalculateResponse  "Recalculation started"
-// @Failure      400  {object}  models.ErrorResponse     "Invalid parameters"
-// @Failure      401  {object}  models.ErrorResponse     "Unauthorized"
-// @Failure      429  {object}  models.ErrorResponse     "Recalculation already running or rate limit exceeded"
-// @Failure      500  {object}  models.ErrorResponse     "Internal server error"
-// @Security     Bearer
-// @Router       /football/rankings/elo/recalculate [post]
+//	@Summary		Recalculate Elo rankings
+//	@Description	Triggers background Elo recalculation (admin). Optionally scoped to one team.
+//	@Tags			elo
+//	@Produce		json
+//	@Param			team_id	query		int						false	"Limit recalculation to this team"
+//	@Param			force	query		bool					false	"Force recalculation even if cache is current"
+//	@Success		202		{object}	elo.RecalculateResponse	"Recalculation started"
+//	@Failure		400		{object}	models.ErrorResponse	"Invalid parameters"
+//	@Failure		401		{object}	models.ErrorResponse	"Unauthorized"
+//	@Failure		429		{object}	models.ErrorResponse	"Recalculation already running or rate limit exceeded"
+//	@Failure		500		{object}	models.ErrorResponse	"Internal server error"
+//	@Security		Bearer
+//	@Router			/football/rankings/elo/recalculate [post]
 func (h *FootballHandler) RecalculateEloRankings(c *gin.Context) {
 	var teamID int
 	if s := c.Query("team_id"); s != "" {

@@ -37,8 +37,8 @@ type Config struct {
 //	ELO_HOME_ADVANTAGE    – float, default 100
 func DefaultConfig() Config {
 	cfg := Config{
-		DefaultRating:  parseEnvFloat("ELO_DEFAULT_RATING", 1500),
-		HomeAdvantage:  parseEnvFloat("ELO_HOME_ADVANTAGE", 100),
+		DefaultRating: parseEnvFloat("ELO_DEFAULT_RATING", 1500),
+		HomeAdvantage: parseEnvFloat("ELO_HOME_ADVANTAGE", 100),
 		// DefaultKFactor applies to friendlies, qualifiers, and any tournament
 		// that does not match a more specific rule below.
 		DefaultKFactor: 5,

@@ -16,13 +16,13 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
 	docs "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 )
 
 // New returns a configured *gin.Engine.

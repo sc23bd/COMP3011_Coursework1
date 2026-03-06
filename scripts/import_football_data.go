@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	localZipPath      = "./football_data.zip"
+	localZipPath = "./football_data.zip"
 )
 
 func main() {
