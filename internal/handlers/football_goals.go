@@ -154,11 +154,12 @@ func (h *FootballHandler) GetPlayerGoals(c *gin.Context) {
 // @Produce      json
 // @Param        id    path      int                        true  "Match ID"
 // @Param        goal  body      models.CreateGoalRequest   true  "Goal details"
-// @Success      201  {object}  models.GoalsResponse     "Goal created"
+// @Success      201  {object}  models.GoalsResponse     "Single created goal wrapped in a GoalsResponse collection"
 // @Failure      400  {object}  models.ErrorResponse     "Invalid input"
+// @Failure      401  {object}  models.ErrorResponse     "Unauthorized"
 // @Failure      404  {object}  models.ErrorResponse     "Match or team not found"
 // @Failure      500  {object}  models.ErrorResponse     "Internal server error"
-// @Security     BearerAuth
+// @Security     Bearer
 // @Router       /football/matches/{id}/goals [post]
 func (h *FootballHandler) CreateGoal(c *gin.Context) {
 	matchID, err := strconv.Atoi(c.Param("id"))
@@ -224,9 +225,10 @@ func (h *FootballHandler) CreateGoal(c *gin.Context) {
 // @Param        goalId  path  int  true  "Goal ID"
 // @Success      204  "Goal deleted"
 // @Failure      400  {object}  models.ErrorResponse     "Invalid ID"
+// @Failure      401  {object}  models.ErrorResponse     "Unauthorized"
 // @Failure      404  {object}  models.ErrorResponse     "Goal not found"
 // @Failure      500  {object}  models.ErrorResponse     "Internal server error"
-// @Security     BearerAuth
+// @Security     Bearer
 // @Router       /football/matches/{id}/goals/{goalId} [delete]
 func (h *FootballHandler) DeleteGoal(c *gin.Context) {
 	goalID, err := strconv.Atoi(c.Param("goalId"))
@@ -260,10 +262,11 @@ func (h *FootballHandler) DeleteGoal(c *gin.Context) {
 // @Param        shootout  body      models.CreateShootoutRequest    true  "Shootout details"
 // @Success      201  {object}  models.ShootoutResponse  "Shootout created"
 // @Failure      400  {object}  models.ErrorResponse     "Invalid input"
+// @Failure      401  {object}  models.ErrorResponse     "Unauthorized"
 // @Failure      404  {object}  models.ErrorResponse     "Match or team not found"
 // @Failure      409  {object}  models.ErrorResponse     "Shootout already exists"
 // @Failure      500  {object}  models.ErrorResponse     "Internal server error"
-// @Security     BearerAuth
+// @Security     Bearer
 // @Router       /football/matches/{id}/shootout [post]
 func (h *FootballHandler) CreateShootout(c *gin.Context) {
 	matchID, err := strconv.Atoi(c.Param("id"))
@@ -329,9 +332,10 @@ func (h *FootballHandler) CreateShootout(c *gin.Context) {
 // @Param        id   path  int  true  "Match ID"
 // @Success      204  "Shootout deleted"
 // @Failure      400  {object}  models.ErrorResponse     "Invalid match ID"
+// @Failure      401  {object}  models.ErrorResponse     "Unauthorized"
 // @Failure      404  {object}  models.ErrorResponse     "Shootout not found"
 // @Failure      500  {object}  models.ErrorResponse     "Internal server error"
-// @Security     BearerAuth
+// @Security     Bearer
 // @Router       /football/matches/{id}/shootout [delete]
 func (h *FootballHandler) DeleteShootout(c *gin.Context) {
 	matchID, err := strconv.Atoi(c.Param("id"))
