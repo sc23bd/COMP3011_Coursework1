@@ -77,6 +77,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.GET("/teams/:id/elo", fh.GetTeamElo)
 			football.GET("/teams/:id/elo/timeline", fh.GetTeamEloTimeline)
 
+			football.GET("/tournaments", fh.ListTournaments)
+
 			football.GET("/matches", fh.ListMatches)
 			football.GET("/matches/:id", fh.GetMatch)
 			football.GET("/matches/:id/goals", fh.GetMatchGoals)

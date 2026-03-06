@@ -19,6 +19,7 @@ type FootballRepository interface {
 
 	// Tournaments - read
 	GetTournamentByID(id int) (models.Tournament, error)
+	ListTournaments() ([]models.Tournament, error)
 
 	// Teams - write
 	CreateTeam(name string) (models.Team, error)
@@ -57,6 +58,9 @@ type FootballRepository interface {
 	// GetEloRankings returns a paginated global Elo ranking snapshot.
 	// region is an optional filter (empty = all regions); limit/offset control pagination.
 	GetEloRankings(asOf time.Time, region string, limit, offset int) ([]elo.RankingEntry, error)
+	// GetTeamCachedRank returns the most-recently cached global rank for a team
+	// on or before asOf. Returns 0 if no cached rank exists.
+	GetTeamCachedRank(teamID int, asOf time.Time) (int, error)
 
 	// Elo – write
 	// SaveEloSnapshot upserts a cached Elo rating for one team on one date.

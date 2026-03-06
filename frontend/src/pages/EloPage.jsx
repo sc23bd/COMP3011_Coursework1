@@ -168,9 +168,9 @@ export default function EloPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rankings.map((r) => (
+                    {rankings.map((r, index) => (
                       <tr key={r.teamId} className="border-b hover:bg-slate-50 transition-colors">
-                        <td className="p-3"><RankBadge rank={r.rank} /></td>
+                        <td className="p-3"><RankBadge rank={rankOffset + index + 1} /></td>
                         <td className="p-3 font-medium">{r.teamName}</td>
                         <td className="p-3 text-right tabular-nums font-semibold">{Math.round(r.elo)}</td>
                       </tr>
@@ -233,8 +233,12 @@ export default function EloPage() {
                   <p className="text-xs text-slate-500 mt-1">ELO Rating</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-black">#{teamElo.rank}</p>
-                  <p className="text-xs text-slate-500 mt-1">World Rank</p>
+                  <p className="text-3xl font-black">
+                    {teamElo.rank > 0 ? `#${teamElo.rank}` : "—"}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {teamElo.rank > 0 ? "World Rank" : "Rank (run recalculate)"}
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold">{teamElo.date}</p>

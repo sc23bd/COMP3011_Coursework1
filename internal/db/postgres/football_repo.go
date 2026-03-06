@@ -117,6 +117,29 @@ func (r *FootballRepo) GetTournamentByID(id int) (models.Tournament, error) {
 	return t, nil
 }
 
+// ListTournaments returns all tournaments ordered alphabetically by name.
+func (r *FootballRepo) ListTournaments() ([]models.Tournament, error) {
+	const q = `SELECT id, name, created_at FROM football_tournaments ORDER BY name ASC`
+	rows, err := r.db.Query(q)
+	if err != nil {
+		return nil, fmt.Errorf("footballRepo.ListTournaments: %w", err)
+	}
+	defer rows.Close()
+
+	var tournaments []models.Tournament
+	for rows.Next() {
+		var t models.Tournament
+		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt); err != nil {
+			return nil, fmt.Errorf("footballRepo.ListTournaments scan: %w", err)
+		}
+		tournaments = append(tournaments, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("footballRepo.ListTournaments rows: %w", err)
+	}
+	return tournaments, nil
+}
+
 // ListMatches returns a paginated list of matches ordered by date descending.
 func (r *FootballRepo) ListMatches(limit, offset int) ([]models.Match, error) {
 	const q = `

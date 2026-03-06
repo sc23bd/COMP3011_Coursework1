@@ -12,6 +12,30 @@ import (
 // defaultLimit is the default number of matches returned per page.
 const defaultLimit = 50
 
+// --- Tournaments (read) -------------------------------------------------------
+
+// ListTournaments handles GET /api/v1/football/tournaments
+// Returns all tournaments ordered alphabetically.
+//
+//	@Summary		List all tournaments
+//	@Description	Get all football tournaments ordered by name
+//	@Tags			tournaments
+//	@Produce		json
+//	@Success		200	{object}	models.TournamentsResponse	"List of tournaments"
+//	@Failure		500	{object}	models.ErrorResponse		"Internal server error"
+//	@Router			/football/tournaments [get]
+func (h *FootballHandler) ListTournaments(c *gin.Context) {
+	tournaments, err := h.repo.ListTournaments()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+	if tournaments == nil {
+		tournaments = []models.Tournament{}
+	}
+	c.JSON(http.StatusOK, models.TournamentsResponse{Data: tournaments})
+}
+
 // --- Matches (read) ----------------------------------------------------------
 
 // ListMatches handles GET /api/v1/football/matches
