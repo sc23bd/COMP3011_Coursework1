@@ -70,6 +70,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.GET("/teams", fh.ListTeams)
 			football.GET("/teams/:id", fh.GetTeam)
 			football.GET("/teams/:id/history", fh.GetTeamHistory)
+			football.GET("/teams/:id/elo", fh.GetTeamElo)
+			football.GET("/teams/:id/elo/timeline", fh.GetTeamEloTimeline)
 
 			football.GET("/matches", fh.ListMatches)
 			football.GET("/matches/:id", fh.GetMatch)
@@ -79,6 +81,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.GET("/head-to-head", fh.GetHeadToHead)
 
 			football.GET("/players/:name/goals", fh.GetPlayerGoals)
+
+			football.GET("/rankings/elo", fh.GetEloRankings)
 
 			// Protected mutation endpoints (JWT required)
 			football.POST("/teams", middleware.JWTAuth(jwtService), fh.CreateTeam)
@@ -94,6 +98,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 
 			football.POST("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.CreateShootout)
 			football.DELETE("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.DeleteShootout)
+
+			football.POST("/rankings/elo/recalculate", middleware.JWTAuth(jwtService), fh.RecalculateEloRankings)
 		}
 	}
 

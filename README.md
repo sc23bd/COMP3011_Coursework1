@@ -273,6 +273,31 @@ DROP INDEX IF EXISTS items_updated_at_idx;
 DROP TABLE IF EXISTS items;
 ```
 
+#### `migrations/005_elo_ratings.sql` — Elo rating cache and config
+
+Adds the `football_elo_cache` (pre-computed Elo snapshots) and
+`football_elo_config` (runtime-tunable parameters) tables:
+
+```sql
+CREATE TABLE IF NOT EXISTS football_elo_cache (
+    id              SERIAL PRIMARY KEY,
+    team_id         INTEGER NOT NULL REFERENCES football_teams(id) ON DELETE CASCADE,
+    as_of_date      DATE NOT NULL,
+    elo_rating      NUMERIC(8,2) NOT NULL,
+    global_rank     INTEGER,
+    matches_played  INTEGER NOT NULL DEFAULT 0,
+    computed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (team_id, as_of_date)
+);
+
+CREATE TABLE IF NOT EXISTS football_elo_config (
+    key         VARCHAR(50) PRIMARY KEY,
+    value       JSONB NOT NULL,
+    description TEXT,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 ### Connection pooling
 
 `internal/db/postgres/db.go` configures the `*sql.DB` pool:
@@ -368,13 +393,58 @@ Base path: `/api/v1/football`
 |--------|------|------|-------------|
 | `GET` | `/players/:name/goals` | — | Get all goals scored by a player (exact name match) |
 
+### Football — Elo Ratings
+
+Dynamic World Football Elo ratings computed from historical match data (1872–present).
+See [docs/elo-methodology.md](docs/elo-methodology.md) for the full formula and parameter details.
+
+| Method | Path | Auth | Description | Query Params |
+|--------|------|------|-------------|--------------|
+| `GET` | `/teams/:id/elo` | — | Get current or historical Elo rating for a team | `?date=YYYY-MM-DD`, `?include_history=true` |
+| `GET` | `/teams/:id/elo/timeline` | — | Time-series of Elo changes for a team | `?start_date=`, `?end_date=`, `?resolution=match\|month\|year` |
+| `GET` | `/rankings/elo` | — | Global Elo rankings snapshot | `?date=YYYY-MM-DD`, `?region=europe\|asia\|…`, `?limit=50&offset=0` |
+| `POST` | `/rankings/elo/recalculate` | JWT | Trigger background Elo recalculation (admin) | `?team_id=optional`, `?force=true` |
+
+**Elo response example** (`GET /teams/45/elo?date=2014-07-13`):
+
+```json
+{
+  "teamId": 45,
+  "teamName": "Germany",
+  "date": "2014-07-13T00:00:00Z",
+  "elo": 2145.30,
+  "changeFromPrevious": 12.40,
+  "matchesConsidered": 847,
+  "methodology": {
+    "kFactor": 5,
+    "homeAdvantage": 100,
+    "weightMultiplier": 1.0,
+    "formulaReference": "https://www.eloratings.net/method.html"
+  },
+  "links": [
+    {"rel": "self",     "href": "/api/v1/football/teams/45/elo?date=2014-07-13", "method": "GET"},
+    {"rel": "timeline", "href": "/api/v1/football/teams/45/elo/timeline",        "method": "GET"},
+    {"rel": "team",     "href": "/api/v1/football/teams/45",                     "method": "GET"}
+  ]
+}
+```
+
+**Elo environment variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ELO_DEFAULT_RATING` | `1500` | Starting Elo for new teams |
+| `ELO_HOME_ADVANTAGE` | `100` | Points added to home-team expected result |
+| `ELO_GOAL_MARGIN_FACTOR` | `0.1` | Coefficient for `ln(\|goal_diff\|+1)` adjustment |
+
 ### Response Headers
 
 | Header | Description |
 |--------|-------------|
 | `X-Request-ID` | Unique ID for each request (traceability) |
-| `Cache-Control` | `public, max-age=60` on GET; `no-store` on mutations |
+| `Cache-Control` | `public, max-age=60` on GET; `no-store` on mutations and the recalculate endpoint |
 | `Location` | Set to the new resource URI on `201 Created` |
+| `X-Elo-Computed-At` | Timestamp of when the Elo rating was computed (Elo endpoints only) |
 
 ---
 
