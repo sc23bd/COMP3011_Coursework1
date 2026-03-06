@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Pencil, Trash2, Plus, Eye, History } from "lucide-react"
+import { formatDate } from "@/lib/utils"
 
 function TeamDialog({ open, onClose, onSave, team }) {
   const [name, setName] = useState(team?.name || "")
@@ -88,7 +89,7 @@ function TeamDetailDialog({ open, onClose, teamId }) {
               <span className="font-medium text-slate-500">ID</span><span>{detail.id}</span>
               <span className="font-medium text-slate-500">Name</span><span className="font-semibold">{detail.name}</span>
               <span className="font-medium text-slate-500">Created</span>
-              <span>{detail.createdAt ? new Date(detail.createdAt).toLocaleDateString() : "—"}</span>
+              <span>{detail.createdAt ? formatDate(detail.createdAt) : "—"}</span>
             </div>
             {history?.data?.length > 0 && (
               <div>
@@ -97,7 +98,7 @@ function TeamDetailDialog({ open, onClose, teamId }) {
                   {history.data.map((h) => (
                     <div key={h.id} className="flex justify-between text-sm border rounded p-2">
                       <span>{h.formerName}</span>
-                      <span className="text-slate-500">{h.startDate} — {h.endDate || "present"}</span>
+                      <span className="text-slate-500">{formatDate(h.startDate)} — {h.endDate ? formatDate(h.endDate) : "present"}</span>
                     </div>
                   ))}
                 </div>

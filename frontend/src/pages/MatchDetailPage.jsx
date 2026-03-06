@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Plus, Trash2, Target, Shield } from "lucide-react"
+import { formatDate } from "@/lib/utils"
 
 function AddGoalDialog({ open, onClose, onSave, matchId, homeTeamId, homeName, awayTeamId, awayName }) {
   const [form, setForm] = useState({ scorer: "", teamId: "", ownGoal: false, penalty: false })
@@ -218,7 +219,7 @@ export default function MatchDetailPage() {
         <CardContent className="p-6">
           <div className="flex justify-between items-center mb-4">
             <Badge variant="secondary">{match.tournament}</Badge>
-            <span className="text-sm text-slate-500">{match.date} · {match.city}, {match.country}</span>
+            <span className="text-sm text-slate-500">{formatDate(match.date)} · {match.city}, {match.country}</span>
           </div>
           <div className="grid grid-cols-3 items-center gap-4 text-center">
             <div>

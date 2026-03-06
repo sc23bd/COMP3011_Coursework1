@@ -30,8 +30,12 @@ export const getTeamHistory = (id) => api.get(`/football/teams/${id}/history`)
 // Matches
 export const getMatches = (params) => api.get("/football/matches", { params })
 export const getMatch = (id) => api.get(`/football/matches/${id}`)
+export const createMatch = (data) => api.post("/football/matches", data)
 export const getHeadToHead = (teamA, teamB) =>
   api.get("/football/head-to-head", { params: { teamA, teamB } })
+
+// Tournaments
+export const getTournaments = () => api.get("/football/tournaments")
 
 // Goals
 export const getGoals = (matchId) => api.get(`/football/matches/${matchId}/goals`)

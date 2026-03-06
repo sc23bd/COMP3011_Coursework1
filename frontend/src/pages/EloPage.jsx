@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Minus, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { formatDate } from "@/lib/utils"
 
 function RankBadge({ rank }) {
   const colors = rank === 1 ? "bg-yellow-100 text-yellow-800" : rank === 2 ? "bg-slate-100 text-slate-700" : rank === 3 ? "bg-orange-100 text-orange-800" : "bg-white text-slate-600 border"
@@ -241,7 +242,7 @@ export default function EloPage() {
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold">{teamElo.date}</p>
+                  <p className="text-sm font-semibold">{formatDate(teamElo.date)}</p>
                   <p className="text-xs text-slate-500 mt-1">As of Date</p>
                 </div>
                 <div className="text-center">
@@ -317,7 +318,7 @@ export default function EloPage() {
                   <tbody>
                     {(timeline.data || []).map((entry, i) => (
                       <tr key={i} className="border-b hover:bg-slate-50">
-                        <td className="p-3">{entry.date}</td>
+                        <td className="p-3">{formatDate(entry.date)}</td>
                         <td className="p-3">{entry.opponent}</td>
                         <td className="p-3 text-center">
                           <Badge variant={entry.homeAway === "H" ? "default" : entry.homeAway === "A" ? "secondary" : "outline"}>
