@@ -314,7 +314,7 @@
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Record a new goal for a match",
@@ -348,13 +348,19 @@
                 ],
                 "responses": {
                     "201": {
-                        "description": "Goal created",
+                        "description": "Single created goal wrapped in a GoalsResponse collection",
                         "schema": {
                             "$ref": "#/definitions/models.GoalsResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -378,7 +384,7 @@
             "delete": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Remove a goal record from a match",
@@ -408,6 +414,12 @@
                     },
                     "400": {
                         "description": "Invalid ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -476,7 +488,7 @@
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Record a penalty shootout result for a match",
@@ -521,6 +533,12 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Match or team not found",
                         "schema": {
@@ -544,7 +562,7 @@
             "delete": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Remove a penalty shootout record from a match",
@@ -567,6 +585,12 @@
                     },
                     "400": {
                         "description": "Invalid match ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }

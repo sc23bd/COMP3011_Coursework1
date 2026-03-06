@@ -453,11 +453,15 @@ paths:
       - application/json
       responses:
         "201":
-          description: Goal created
+          description: Single created goal wrapped in a GoalsResponse collection
           schema:
             $ref: '#/definitions/models.GoalsResponse'
         "400":
           description: Invalid input
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "404":
@@ -469,7 +473,7 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
-      - BearerAuth: []
+      - Bearer: []
       summary: Create a goal
       tags:
       - goals
@@ -494,6 +498,10 @@ paths:
           description: Invalid ID
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Goal not found
           schema:
@@ -503,7 +511,7 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
-      - BearerAuth: []
+      - Bearer: []
       summary: Delete a goal
       tags:
       - goals
@@ -523,6 +531,10 @@ paths:
           description: Invalid match ID
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Shootout not found
           schema:
@@ -532,7 +544,7 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
-      - BearerAuth: []
+      - Bearer: []
       summary: Delete a shootout
       tags:
       - shootouts
@@ -593,6 +605,10 @@ paths:
           description: Invalid input
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Match or team not found
           schema:
@@ -606,7 +622,7 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       security:
-      - BearerAuth: []
+      - Bearer: []
       summary: Create a shootout
       tags:
       - shootouts
