@@ -14,6 +14,10 @@ package router
 
 import (
 	"database/sql"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
@@ -101,6 +105,25 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 
 			football.POST("/rankings/elo/recalculate", middleware.JWTAuth(jwtService), fh.RecalculateEloRankings)
 		}
+	}
+
+	// Serve the built frontend static files if the dist directory exists.
+	// In production (Docker), the frontend is built via the node:alpine stage
+	// and copied to ./frontend/dist alongside the server binary.
+	const frontendDist = "./frontend/dist"
+	if _, err := os.Stat(frontendDist); err == nil {
+		r.Static("/assets", filepath.Join(frontendDist, "assets"))
+		r.StaticFile("/vite.svg", filepath.Join(frontendDist, "vite.svg"))
+		// Catch-all: serve index.html for any non-API path to support
+		// client-side (React Router) navigation.
+		r.NoRoute(func(c *gin.Context) {
+			path := c.Request.URL.Path
+			if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/swagger/") {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+				return
+			}
+			c.File(filepath.Join(frontendDist, "index.html"))
+		})
 	}
 
 	return r

@@ -1,5 +1,14 @@
 # Dockerfile
-# Build stage
+
+# Frontend build stage
+FROM node:alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY frontend/ ./
+RUN npm run build
+
+# Go build stage
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
@@ -18,6 +27,7 @@ WORKDIR /root/
 
 COPY --from=builder /app/server .
 COPY --from=builder /app/import_football_data .
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Download football dataset from Kaggle
 RUN curl -L -o football_data.zip -f \
