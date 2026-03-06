@@ -17,7 +17,7 @@ Elo_new = Elo_old + K × GoalMarginAdj × (ActualResult − ExpectedResult)
 | Symbol | Description |
 |--------|-------------|
 | `K` | Tournament K-factor (see table below) |
-| `GoalMarginAdj` | `1 + GoalMarginFactor × ln(\|goal_diff\| + 1)` |
+| `GoalMarginAdj` | Piecewise multiplier based on goal difference N (see table below) |
 | `ActualResult` | `1.0` = win, `0.5` = draw, `0.0` = loss (from home-team perspective) |
 | `ExpectedResult` | `1 / (10^(−dr/400) + 1)` |
 | `dr` | `homeElo − awayElo + HomeAdvantage` (set `HomeAdvantage = 0` for neutral sites) |
@@ -37,21 +37,20 @@ of the time.
 
 ### Goal Margin Adjustment
 
-A larger winning margin earns a proportionally higher rating change:
+A larger winning margin earns a proportionally higher rating change, following
+the exact step formula from the World Football Elo method:
 
-```
-GoalMarginAdj = 1 + GoalMarginFactor × ln(|homeScore − awayScore| + 1)
-```
+| Goal difference (N) | Multiplier |
+|---------------------|-----------|
+| 0 or 1              | 1.000     |
+| 2                   | 1.500     |
+| 3                   | 1.750     |
+| 4                   | 1.875     |
+| 5                   | 2.000     |
+| N ≥ 4               | 1.75 + (N − 3) / 8 |
 
-Default `GoalMarginFactor = 0.1` (configurable via `ELO_GOAL_MARGIN_FACTOR`).
-
-| Goal difference | Multiplier (default factor) |
-|----------------|-----------------------------|
-| 0 (draw)       | 1.00                        |
-| 1              | 1.07                        |
-| 2              | 1.11                        |
-| 3              | 1.14                        |
-| 5              | 1.18                        |
+The sign of the goal difference is ignored (a 3-0 home win and a 0-3 away
+loss both use N = 3).
 
 ### K-Factor Table
 
@@ -114,7 +113,6 @@ All parameters are configurable via environment variables:
 |----------|---------|-------------|
 | `ELO_DEFAULT_RATING` | `1500` | Starting Elo for teams with no match history |
 | `ELO_HOME_ADVANTAGE` | `100` | Rating points added to home-team expected result |
-| `ELO_GOAL_MARGIN_FACTOR` | `0.1` | Coefficient for the goal-margin multiplier |
 
 At runtime the `football_elo_config` database table stores the same defaults
 and can be used as a source of truth for future UI-driven configuration.

@@ -435,7 +435,6 @@ See [docs/elo-methodology.md](docs/elo-methodology.md) for the full formula and 
 |----------|---------|-------------|
 | `ELO_DEFAULT_RATING` | `1500` | Starting Elo for new teams |
 | `ELO_HOME_ADVANTAGE` | `100` | Points added to home-team expected result |
-| `ELO_GOAL_MARGIN_FACTOR` | `0.1` | Coefficient for `ln(\|goal_diff\|+1)` adjustment |
 
 ### Response Headers
 

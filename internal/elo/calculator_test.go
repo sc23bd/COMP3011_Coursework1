@@ -54,7 +54,7 @@ func TestExpectedResult_HomeAdvantage(t *testing.T) {
 
 // TestGoalMarginMultiplier_Draw verifies that a 0-goal difference gives multiplier = 1.0.
 func TestGoalMarginMultiplier_Draw(t *testing.T) {
-	m := elo.GoalMarginMultiplier(0, cfg.GoalMarginFactor)
+	m := elo.GoalMarginMultiplier(0)
 	if !almostEqual(m, 1.0, 1e-9) {
 		t.Errorf("GoalMarginMultiplier(0): expected 1.0, got %.9f", m)
 	}
@@ -63,8 +63,8 @@ func TestGoalMarginMultiplier_Draw(t *testing.T) {
 // TestGoalMarginMultiplier_BiggerWinScalesHigher verifies that a 3-goal win gives
 // a higher multiplier than a 1-goal win.
 func TestGoalMarginMultiplier_BiggerWinScalesHigher(t *testing.T) {
-	m1 := elo.GoalMarginMultiplier(1, cfg.GoalMarginFactor)
-	m3 := elo.GoalMarginMultiplier(3, cfg.GoalMarginFactor)
+	m1 := elo.GoalMarginMultiplier(1)
+	m3 := elo.GoalMarginMultiplier(3)
 	if m3 <= m1 {
 		t.Errorf("3-goal margin should yield larger multiplier than 1-goal: %.4f vs %.4f", m3, m1)
 	}
@@ -73,8 +73,8 @@ func TestGoalMarginMultiplier_BiggerWinScalesHigher(t *testing.T) {
 // TestGoalMarginMultiplier_Symmetry verifies that the sign of the goal difference
 // does not affect the multiplier.
 func TestGoalMarginMultiplier_Symmetry(t *testing.T) {
-	pos := elo.GoalMarginMultiplier(2, cfg.GoalMarginFactor)
-	neg := elo.GoalMarginMultiplier(-2, cfg.GoalMarginFactor)
+	pos := elo.GoalMarginMultiplier(2)
+	neg := elo.GoalMarginMultiplier(-2)
 	if !almostEqual(pos, neg, 1e-9) {
 		t.Errorf("GoalMarginMultiplier should be symmetric: %.9f vs %.9f", pos, neg)
 	}
@@ -291,11 +291,32 @@ func TestKFactor_SubstringPrecedence(t *testing.T) {
 	}
 }
 
-// TestGoalMarginMultiplier_NegativeFactor verifies that a negative factor is
-// treated as zero (no adjustment), keeping the multiplier at 1.0.
-func TestGoalMarginMultiplier_NegativeFactor(t *testing.T) {
-	m := elo.GoalMarginMultiplier(3, -0.5)
-	if !almostEqual(m, 1.0, 1e-9) {
-		t.Errorf("GoalMarginMultiplier with negative factor: expected 1.0, got %.9f", m)
+// TestGoalMarginMultiplier_ExactValues verifies the official eloratings.net
+// piecewise step values:
+//   - N ≤ 1  → 1.0
+//   - N == 2 → 1.5
+//   - N == 3 → 1.75
+//   - N == 4 → 1.875  (1.75 + (4-3)/8)
+//   - N == 5 → 2.0    (1.75 + (5-3)/8)
+func TestGoalMarginMultiplier_ExactValues(t *testing.T) {
+	cases := []struct {
+		diff int
+		want float64
+	}{
+		{0, 1.0},
+		{1, 1.0},
+		{-1, 1.0},
+		{2, 1.5},
+		{-2, 1.5},
+		{3, 1.75},
+		{4, 1.875},
+		{5, 2.0},
+		{6, 2.125},
+	}
+	for _, tc := range cases {
+		got := elo.GoalMarginMultiplier(tc.diff)
+		if !almostEqual(got, tc.want, 1e-9) {
+			t.Errorf("GoalMarginMultiplier(%d): expected %.4f, got %.9f", tc.diff, tc.want, got)
+		}
 	}
 }

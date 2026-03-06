@@ -20,9 +20,6 @@ type Config struct {
 	// HomeAdvantage is the number of Elo points added to the home team's
 	// expected-result calculation.  Set to 0 for neutral-site matches.
 	HomeAdvantage float64
-	// GoalMarginFactor is the coefficient applied to ln(|goal_diff|+1) when
-	// scaling the K factor for goal-margin adjustment.
-	GoalMarginFactor float64
 	// DefaultKFactor is the fallback K used when no tournament-name rule matches.
 	DefaultKFactor float64
 	// KFactorRules maps lower-cased tournament name substrings to their K value.
@@ -38,12 +35,10 @@ type Config struct {
 //
 //	ELO_DEFAULT_RATING    – float, default 1500
 //	ELO_HOME_ADVANTAGE    – float, default 100
-//	ELO_GOAL_MARGIN_FACTOR – float, default 0.1
 func DefaultConfig() Config {
 	cfg := Config{
-		DefaultRating:    parseEnvFloat("ELO_DEFAULT_RATING", 1500),
-		HomeAdvantage:    parseEnvFloat("ELO_HOME_ADVANTAGE", 100),
-		GoalMarginFactor: parseEnvFloat("ELO_GOAL_MARGIN_FACTOR", 0.1),
+		DefaultRating:  parseEnvFloat("ELO_DEFAULT_RATING", 1500),
+		HomeAdvantage:  parseEnvFloat("ELO_HOME_ADVANTAGE", 100),
 		// DefaultKFactor applies to friendlies, qualifiers, and any tournament
 		// that does not match a more specific rule below.
 		DefaultKFactor: 5,

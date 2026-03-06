@@ -7,7 +7,7 @@
 // where:
 //
 //	ExpectedResult   = 1 / (10^(-dr/400) + 1),  dr = homeElo - awayElo + homeAdvantage
-//	GoalMarginAdj    = 1 + GoalMarginFactor * ln(|homeScore - awayScore| + 1)
+//	GoalMarginAdj    = piecewise multiplier on goal difference N (see GoalMarginMultiplier)
 //	ActualResult     = 1.0 (win), 0.5 (draw), 0.0 (loss)   from home-team perspective
 //	K                = tournament-dependent factor (see Config.KFactor)
 //
@@ -99,18 +99,28 @@ func ExpectedResult(homeElo, awayElo, homeAdvantage float64) float64 {
 	return 1.0 / (math.Pow(10, -dr/400) + 1)
 }
 
-// GoalMarginMultiplier returns the scaling factor for the K value based on
-// the absolute goal difference.
+// GoalMarginMultiplier returns the K-factor scaling multiplier for the absolute
+// goal difference N, following the exact World Football Elo step formula:
 //
-//	multiplier = 1 + factor * ln(|goalDiff| + 1)
-//
-// A negative factor is treated as zero (no adjustment).
-func GoalMarginMultiplier(goalDiff int, factor float64) float64 {
-	if factor < 0 {
-		factor = 0
+//   - N ≤ 1  → 1.0   (no adjustment)
+//   - N == 2 → 1.5   (K increased by half)
+//   - N == 3 → 1.75  (K increased by 3/4)
+//   - N ≥ 4  → 1.75 + (N-3)/8
+func GoalMarginMultiplier(goalDiff int) float64 {
+	n := goalDiff
+	if n < 0 {
+		n = -n
 	}
-	abs := math.Abs(float64(goalDiff))
-	return 1.0 + factor*math.Log(abs+1)
+	switch {
+	case n <= 1:
+		return 1.0
+	case n == 2:
+		return 1.5
+	case n == 3:
+		return 1.75
+	default:
+		return 1.75 + float64(n-3)/8.0
+	}
 }
 
 // --- internal helpers -------------------------------------------------------
@@ -127,7 +137,7 @@ func processMatch(m MatchResult, ratings RatingMap, cfg Config) {
 
 	expected := ExpectedResult(homeElo, awayElo, advantage)
 	k := cfg.KFactor(m.Tournament)
-	gmAdj := GoalMarginMultiplier(m.HomeScore-m.AwayScore, cfg.GoalMarginFactor)
+	gmAdj := GoalMarginMultiplier(m.HomeScore - m.AwayScore)
 
 	var actual float64
 	switch {
