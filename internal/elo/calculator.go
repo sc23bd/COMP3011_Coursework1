@@ -11,7 +11,7 @@
 //	ActualResult     = 1.0 (win), 0.5 (draw), 0.0 (loss)   from home-team perspective
 //	K                = tournament-dependent factor (see Config.KFactor)
 //
-// Reference: https://www.eloratings.net/method.html
+// Reference: https://www.eloratings.net/about
 package elo
 
 import (

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	formulaReference = "https://www.eloratings.net/method.html"
+	formulaReference = "https://www.eloratings.net/about"
 )
 
 // Config holds all tunable parameters for the Elo calculation engine.

@@ -2,7 +2,7 @@
 
 This document describes the dynamic Elo rating system implemented in the
 COMP3011 Football API.  It follows the **World Football Elo** method
-published at <https://www.eloratings.net/method.html>.
+published at <https://www.eloratings.net/about>.
 
 ---
 
@@ -180,5 +180,5 @@ with duration so administrators can monitor performance.
 ## References
 
 * Arpad Elo (1978). *The Rating of Chessplayers, Past and Present*. Arco Publishing.
-* World Football Elo Ratings method: <https://www.eloratings.net/method.html>
+* World Football Elo Ratings method: <https://www.eloratings.net/about>
 * Kaggle dataset: [International football results 1872–2025](https://www.kaggle.com/datasets/martj42/international-football-results-from-1872-to-2017)
