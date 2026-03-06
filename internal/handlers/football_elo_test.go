@@ -397,6 +397,10 @@ func TestGetEloRankings_CacheStatusMiss(t *testing.T) {
 // Rate limiting on /recalculate
 // ---------------------------------------------------------------------------
 
+// testPollTimeout is the maximum time the polling-based rate-limit tests will
+// wait for the background goroutine to finish and the cooldown to become active.
+const testPollTimeout = 2 * time.Second
+
 // blockingMock wraps footballMock with a channel that allows tests to hold the
 // background goroutine open until the test signals it to proceed.
 type blockingMock struct {
@@ -469,7 +473,7 @@ func TestRecalculateEloRankings_RateLimited(t *testing.T) {
 	// Poll until we receive the COOLDOWN 429 (not the "already running" 429).
 	// The goroutine finishes very quickly with the mock, but we wait for
 	// running=false AND lastRun set.
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(testPollTimeout)
 	for time.Now().Before(deadline) {
 		w := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
 		if w.Code == http.StatusTooManyRequests {
@@ -497,7 +501,7 @@ func TestRecalculateEloRankings_ForceBypassesRateLimit(t *testing.T) {
 	assertStatus(t, w1, http.StatusAccepted)
 
 	// Poll until the COOLDOWN 429 appears (goroutine finished, lastRun set).
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(testPollTimeout)
 	for time.Now().Before(deadline) {
 		w := doRequest(r, http.MethodPost, "/api/v1/football/rankings/elo/recalculate", nil)
 		if w.Code == http.StatusTooManyRequests {

@@ -270,14 +270,17 @@ func (h *FootballHandler) GetEloRankings(c *gin.Context) {
 		return
 	}
 
-	// Signal whether the response was served from a pre-computed snapshot or is
-	// empty due to a cache miss (the cache must be pre-warmed via /recalculate).
+	// Determine cache status immediately and set the header before any further
+	// slice manipulation, so the intent is clear.
 	cacheStatus := "hit"
 	if len(rankings) == 0 {
 		cacheStatus = "miss"
-		rankings = []elo.RankingEntry{}
 	}
 	c.Header("X-Cache-Status", cacheStatus)
+
+	if rankings == nil {
+		rankings = []elo.RankingEntry{}
+	}
 
 	// Attach HATEOAS links to each entry.
 	for i := range rankings {
@@ -422,7 +425,11 @@ func (h *FootballHandler) runEloRecalculation(teamID int) {
 		}
 	}
 	if saveErrors > 0 {
-		log.Printf("Elo recalculation completed with %d snapshot save error(s) (teamID=%d)", saveErrors, teamID)
+		// Log as a warning: the calculation succeeded but some snapshots were not
+		// persisted.  Rankings for the affected teams will be stale until the
+		// next successful recalculation.
+		log.Printf("Elo recalculation PARTIAL FAILURE: %d/%d snapshot(s) not saved (teamID=%d); rankings may be incomplete",
+			saveErrors, len(sortable), teamID)
 	}
 }
 
