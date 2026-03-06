@@ -23,11 +23,5 @@ COPY --from=builder /app/import_football_data .
 RUN curl -L -o football_data.zip -f \
     "https://www.kaggle.com/api/v1/datasets/download/martj42/international-football-results-from-1872-to-2017"
 
-# Run import script during build (requires DATABASE_URL to be set)
-ARG DATABASE_URL
-RUN if [ -n "$DATABASE_URL" ]; then \
-    ./import_football_data; \
-    fi
-
 EXPOSE 8080
 CMD ["./server"]

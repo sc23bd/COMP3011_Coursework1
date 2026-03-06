@@ -2,6 +2,25 @@
 // Configuration is read from environment variables so the binary has no
 // hard-coded operational parameters (supports the Layered System principle —
 // the same binary can run behind different proxy/load-balancer configurations).
+//
+// @title           Football API
+// @version         1.0
+// @description     REST API for football match and team data with HATEOAS and JWT authentication
+// @termsOfService  http://swagger.io/terms/
+//
+// @contact.name   API Support
+// @contact.email  support@example.com
+//
+// @license.name  MIT
+// @license.url   http://opensource.org/licenses/MIT
+//
+// @host      localhost:8080
+// @BasePath  /api/v1
+//
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 package main
 
 import (

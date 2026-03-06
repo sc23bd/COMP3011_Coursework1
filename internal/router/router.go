@@ -20,6 +20,9 @@ import (
 	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
+	docs "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 )
 
 // New returns a configured *gin.Engine.
@@ -40,6 +43,9 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 	r.Use(middleware.Logger())
 	r.Use(middleware.CacheControl())
 	r.Use(gin.Recovery())
+
+	// Swagger documentation endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(docs.Handler))
 
 	// API v1 route group — versioned URI prefix (Uniform Interface principle).
 	v1 := r.Group("/api/v1")

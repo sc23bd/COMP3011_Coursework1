@@ -1,0 +1,862 @@
+basePath: /api/v1
+definitions:
+  models.CreateGoalRequest:
+    properties:
+      ownGoal:
+        type: boolean
+      penalty:
+        type: boolean
+      scorer:
+        maxLength: 100
+        minLength: 1
+        type: string
+      teamId:
+        minimum: 1
+        type: integer
+    required:
+    - scorer
+    - teamId
+    type: object
+  models.CreateShootoutRequest:
+    properties:
+      winnerId:
+        minimum: 1
+        type: integer
+    required:
+    - winnerId
+    type: object
+  models.CreateTeamRequest:
+    properties:
+      name:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  models.FormerName:
+    properties:
+      endDate:
+        type: string
+      formerName:
+        type: string
+      id:
+        type: integer
+      startDate:
+        type: string
+      teamId:
+        type: integer
+    type: object
+  models.FormerNamesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.FormerName'
+        type: array
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+    type: object
+  models.Goal:
+    properties:
+      id:
+        type: integer
+      matchId:
+        type: integer
+      ownGoal:
+        type: boolean
+      penalty:
+        type: boolean
+      scorer:
+        type: string
+      team:
+        type: string
+      teamId:
+        type: integer
+    type: object
+  models.GoalsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Goal'
+        type: array
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+    type: object
+  models.Link:
+    properties:
+      href:
+        type: string
+      method:
+        type: string
+      rel:
+        type: string
+    type: object
+  models.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.LoginResponse:
+    properties:
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      token:
+        type: string
+    type: object
+  models.MatchResponse:
+    properties:
+      awayScore:
+        type: integer
+      awayTeam:
+        type: string
+      awayTeamId:
+        type: integer
+      city:
+        type: string
+      country:
+        type: string
+      date:
+        type: string
+      homeScore:
+        type: integer
+      homeTeam:
+        type: string
+      homeTeamId:
+        type: integer
+      id:
+        type: integer
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      neutral:
+        type: boolean
+      tournament:
+        type: string
+      tournamentId:
+        type: integer
+    type: object
+  models.MatchesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.MatchResponse'
+        type: array
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+    type: object
+  models.RegisterRequest:
+    properties:
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.ShootoutResponse:
+    properties:
+      id:
+        type: integer
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      matchId:
+        type: integer
+      winner:
+        type: string
+      winnerId:
+        type: integer
+    type: object
+  models.TeamResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+      name:
+        type: string
+    type: object
+  models.TeamsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.TeamResponse'
+        type: array
+      links:
+        items:
+          $ref: '#/definitions/models.Link'
+        type: array
+    type: object
+  models.UpdateTeamRequest:
+    properties:
+      name:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: REST API for football match and team data with HATEOAS and JWT authentication
+  license:
+    name: MIT
+    url: http://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Football API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: User login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with username and password
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Username already exists
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /football/head-to-head:
+    get:
+      description: Get all matches between two specific teams
+      parameters:
+      - description: First team ID
+        in: query
+        name: teamA
+        required: true
+        type: integer
+      - description: Second team ID
+        in: query
+        name: teamB
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Head-to-head matches
+          schema:
+            $ref: '#/definitions/models.MatchesResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get head-to-head matches
+      tags:
+      - matches
+  /football/matches:
+    get:
+      description: Get all matches with pagination support
+      parameters:
+      - default: 50
+        description: Number of results per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of matches
+          schema:
+            $ref: '#/definitions/models.MatchesResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: List all matches
+      tags:
+      - matches
+  /football/matches/{id}:
+    get:
+      description: Get detailed information about a specific match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Match details
+          schema:
+            $ref: '#/definitions/models.MatchResponse'
+        "400":
+          description: Invalid match ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a match by ID
+      tags:
+      - matches
+  /football/matches/{id}/goals:
+    get:
+      description: Get all goals scored in the specified match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of goals
+          schema:
+            $ref: '#/definitions/models.GoalsResponse'
+        "400":
+          description: Invalid match ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get goals for a match
+      tags:
+      - goals
+    post:
+      consumes:
+      - application/json
+      description: Record a new goal for a match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Goal details
+        in: body
+        name: goal
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateGoalRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Single created goal wrapped in a GoalsResponse collection
+          schema:
+            $ref: '#/definitions/models.GoalsResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match or team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Create a goal
+      tags:
+      - goals
+  /football/matches/{id}/goals/{goalId}:
+    delete:
+      description: Remove a goal record from a match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Goal ID
+        in: path
+        name: goalId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Goal deleted
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Goal not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete a goal
+      tags:
+      - goals
+  /football/matches/{id}/shootout:
+    delete:
+      description: Remove a penalty shootout record from a match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Shootout deleted
+        "400":
+          description: Invalid match ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Shootout not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete a shootout
+      tags:
+      - shootouts
+    get:
+      description: Get the penalty shootout result for a match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shootout result
+          schema:
+            $ref: '#/definitions/models.ShootoutResponse'
+        "400":
+          description: Invalid match ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match or shootout not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get shootout result
+      tags:
+      - shootouts
+    post:
+      consumes:
+      - application/json
+      description: Record a penalty shootout result for a match
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Shootout details
+        in: body
+        name: shootout
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateShootoutRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Shootout created
+          schema:
+            $ref: '#/definitions/models.ShootoutResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match or team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Shootout already exists
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Create a shootout
+      tags:
+      - shootouts
+  /football/players/{name}/goals:
+    get:
+      description: Get all goals scored by a specific player
+      parameters:
+      - description: Player name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of goals
+          schema:
+            $ref: '#/definitions/models.GoalsResponse'
+        "400":
+          description: Invalid player name
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get goals by player
+      tags:
+      - players
+  /football/teams:
+    get:
+      description: Get all national teams with HATEOAS links
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of teams
+          schema:
+            $ref: '#/definitions/models.TeamsResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: List all teams
+      tags:
+      - teams
+    post:
+      consumes:
+      - application/json
+      description: Create a new national team (requires authentication)
+      parameters:
+      - description: Team details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Team created
+          schema:
+            $ref: '#/definitions/models.TeamResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Team already exists
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Create a new team
+      tags:
+      - teams
+  /football/teams/{id}:
+    delete:
+      description: Delete a team by ID (requires authentication)
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Team deleted successfully
+        "400":
+          description: Invalid team ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete a team
+      tags:
+      - teams
+    get:
+      description: Get detailed information about a specific team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team details
+          schema:
+            $ref: '#/definitions/models.TeamResponse'
+        "400":
+          description: Invalid team ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a team by ID
+      tags:
+      - teams
+    put:
+      consumes:
+      - application/json
+      description: Update team name (requires authentication)
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated team details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team updated
+          schema:
+            $ref: '#/definitions/models.TeamResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Team name already in use
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update a team
+      tags:
+      - teams
+  /football/teams/{id}/history:
+    get:
+      description: Get historical names for a specific team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team history
+          schema:
+            $ref: '#/definitions/models.FormerNamesResponse'
+        "400":
+          description: Invalid team ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get team history
+      tags:
+      - teams
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
