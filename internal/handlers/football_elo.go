@@ -103,12 +103,21 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 		prevElo = cfg.DefaultRating
 	}
 
+	// Look up the most-recently cached global rank for this team.
+	// Returns 0 if no rank has been cached yet (recalculation not yet run).
+	cachedRank, err := h.repo.GetTeamCachedRank(id, asOf)
+	if err != nil {
+		// Non-fatal: proceed without a rank rather than failing the whole request.
+		cachedRank = 0
+	}
+
 	c.Header("X-Elo-Computed-At", time.Now().UTC().Format(time.RFC3339))
 	c.JSON(http.StatusOK, elo.Rating{
 		TeamID:            team.ID,
 		TeamName:          team.Name,
 		Date:              asOf,
 		Elo:               roundElo(currentElo),
+		Rank:              cachedRank,
 		ChangeFromPrev:    roundElo(currentElo - prevElo),
 		MatchesConsidered: len(matches),
 		Methodology: elo.Methodology{

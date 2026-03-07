@@ -9,3 +9,8 @@ type Tournament struct {
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"createdAt"`
 }
+
+// TournamentsResponse is the response payload for the list-tournaments endpoint.
+type TournamentsResponse struct {
+	Data []Tournament `json:"data"`
+}

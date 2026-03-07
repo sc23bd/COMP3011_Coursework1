@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,6 +47,29 @@ func (r *FootballRepo) GetMatchesChronological(teamID int, endDate time.Time) ([
 	}
 	defer sqlRows.Close()
 	return scanMatchResults(sqlRows)
+}
+
+// GetTeamCachedRank returns the most-recently cached global rank for a team on or
+// before asOf. Returns 0 if no cached rank exists.
+func (r *FootballRepo) GetTeamCachedRank(teamID int, asOf time.Time) (int, error) {
+	const q = `
+		SELECT global_rank
+		FROM football_elo_cache
+		WHERE team_id = $1
+		  AND as_of_date <= $2
+		  AND global_rank IS NOT NULL
+		ORDER BY as_of_date DESC
+		LIMIT 1`
+
+	var rank int
+	err := r.db.QueryRow(q, teamID, asOf).Scan(&rank)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("eloRepo.GetTeamCachedRank: %w", err)
+	}
+	return rank, nil
 }
 
 // SaveEloSnapshot upserts a cached Elo snapshot for one team on one date.

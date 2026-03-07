@@ -128,6 +128,37 @@ definitions:
     - scorer
     - teamId
     type: object
+  models.CreateMatchRequest:
+    properties:
+      awayScore:
+        minimum: 0
+        type: integer
+      awayTeamId:
+        minimum: 1
+        type: integer
+      city:
+        type: string
+      country:
+        type: string
+      date:
+        type: string
+      homeScore:
+        minimum: 0
+        type: integer
+      homeTeamId:
+        minimum: 1
+        type: integer
+      neutral:
+        type: boolean
+      tournamentId:
+        minimum: 1
+        type: integer
+    required:
+    - awayTeamId
+    - date
+    - homeTeamId
+    - tournamentId
+    type: object
   models.CreateShootoutRequest:
     properties:
       winnerId:
@@ -327,6 +358,53 @@ definitions:
           $ref: '#/definitions/models.Link'
         type: array
     type: object
+  models.Tournament:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.TournamentsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Tournament'
+        type: array
+    type: object
+  models.UpdateMatchRequest:
+    properties:
+      awayScore:
+        minimum: 0
+        type: integer
+      awayTeamId:
+        minimum: 1
+        type: integer
+      city:
+        type: string
+      country:
+        type: string
+      date:
+        type: string
+      homeScore:
+        minimum: 0
+        type: integer
+      homeTeamId:
+        minimum: 1
+        type: integer
+      neutral:
+        type: boolean
+      tournamentId:
+        minimum: 1
+        type: integer
+    required:
+    - awayTeamId
+    - date
+    - homeTeamId
+    - tournamentId
+    type: object
   models.UpdateTeamRequest:
     properties:
       name:
@@ -338,14 +416,8 @@ definitions:
     type: object
 host: localhost:8080
 info:
-  contact:
-    email: support@example.com
-    name: API Support
+  contact: {}
   description: REST API for football match and team data with HATEOAS and JWT authentication
-  license:
-    name: MIT
-    url: http://opensource.org/licenses/MIT
-  termsOfService: http://swagger.io/terms/
   title: Football API
   version: "1.0"
 paths:
@@ -482,7 +554,80 @@ paths:
       summary: List all matches
       tags:
       - matches
+    post:
+      consumes:
+      - application/json
+      description: Create a new match result (requires authentication)
+      parameters:
+      - description: Match details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateMatchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Match created
+          schema:
+            $ref: '#/definitions/models.MatchResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Match already exists
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Create a new match
+      tags:
+      - matches
   /football/matches/{id}:
+    delete:
+      description: Delete a match by ID (requires authentication)
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Match deleted successfully
+        "400":
+          description: Invalid match ID
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete a match
+      tags:
+      - matches
     get:
       description: Get detailed information about a specific match
       parameters:
@@ -511,6 +656,54 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       summary: Get a match by ID
+      tags:
+      - matches
+    put:
+      consumes:
+      - application/json
+      description: Update an existing match record (requires authentication)
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated match details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateMatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Match updated
+          schema:
+            $ref: '#/definitions/models.MatchResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Match already exists
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update a match
       tags:
       - matches
   /football/matches/{id}/goals:
@@ -1127,6 +1320,23 @@ paths:
       summary: Get team history
       tags:
       - teams
+  /football/tournaments:
+    get:
+      description: Get all football tournaments ordered by name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of tournaments
+          schema:
+            $ref: '#/definitions/models.TournamentsResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: List all tournaments
+      tags:
+      - tournaments
 securityDefinitions:
   Bearer:
     description: Type "Bearer" followed by a space and JWT token.

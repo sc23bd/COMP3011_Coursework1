@@ -12,6 +12,30 @@ import (
 // defaultLimit is the default number of matches returned per page.
 const defaultLimit = 50
 
+// --- Tournaments (read) -------------------------------------------------------
+
+// ListTournaments handles GET /api/v1/football/tournaments
+// Returns all tournaments ordered alphabetically.
+//
+//	@Summary		List all tournaments
+//	@Description	Get all football tournaments ordered by name
+//	@Tags			tournaments
+//	@Produce		json
+//	@Success		200	{object}	models.TournamentsResponse	"List of tournaments"
+//	@Failure		500	{object}	models.ErrorResponse		"Internal server error"
+//	@Router			/football/tournaments [get]
+func (h *FootballHandler) ListTournaments(c *gin.Context) {
+	tournaments, err := h.repo.ListTournaments()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+	if tournaments == nil {
+		tournaments = []models.Tournament{}
+	}
+	c.JSON(http.StatusOK, models.TournamentsResponse{Data: tournaments})
+}
+
 // --- Matches (read) ----------------------------------------------------------
 
 // ListMatches handles GET /api/v1/football/matches
@@ -164,6 +188,20 @@ func (h *FootballHandler) GetHeadToHead(c *gin.Context) {
 
 // CreateMatch handles POST /api/v1/football/matches
 // Creates a new match result. Requires JWT authorisation.
+//
+//	@Summary		Create a new match
+//	@Description	Create a new match result (requires authentication)
+//	@Tags			matches
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		models.CreateMatchRequest	true	"Match details"
+//	@Success		201		{object}	models.MatchResponse		"Match created"
+//	@Failure		400		{object}	models.ErrorResponse		"Invalid request"
+//	@Failure		401		{object}	models.ErrorResponse		"Unauthorized"
+//	@Failure		409		{object}	models.ErrorResponse		"Match already exists"
+//	@Failure		500		{object}	models.ErrorResponse		"Internal server error"
+//	@Security		Bearer
+//	@Router			/football/matches [post]
 func (h *FootballHandler) CreateMatch(c *gin.Context) {
 	var req models.CreateMatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -214,6 +252,22 @@ func (h *FootballHandler) CreateMatch(c *gin.Context) {
 
 // UpdateMatch handles PUT /api/v1/football/matches/:id
 // Replaces an existing match record. Requires JWT authorisation.
+//
+//	@Summary		Update a match
+//	@Description	Update an existing match record (requires authentication)
+//	@Tags			matches
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int							true	"Match ID"
+//	@Param			request	body		models.UpdateMatchRequest	true	"Updated match details"
+//	@Success		200		{object}	models.MatchResponse		"Match updated"
+//	@Failure		400		{object}	models.ErrorResponse		"Invalid request"
+//	@Failure		401		{object}	models.ErrorResponse		"Unauthorized"
+//	@Failure		404		{object}	models.ErrorResponse		"Match not found"
+//	@Failure		409		{object}	models.ErrorResponse		"Match already exists"
+//	@Failure		500		{object}	models.ErrorResponse		"Internal server error"
+//	@Security		Bearer
+//	@Router			/football/matches/{id} [put]
 func (h *FootballHandler) UpdateMatch(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -272,6 +326,19 @@ func (h *FootballHandler) UpdateMatch(c *gin.Context) {
 
 // DeleteMatch handles DELETE /api/v1/football/matches/:id
 // Removes a match record. Requires JWT authorisation.
+//
+//	@Summary		Delete a match
+//	@Description	Delete a match by ID (requires authentication)
+//	@Tags			matches
+//	@Produce		json
+//	@Param			id	path	int	true	"Match ID"
+//	@Success		204	"Match deleted successfully"
+//	@Failure		400	{object}	models.ErrorResponse	"Invalid match ID"
+//	@Failure		401	{object}	models.ErrorResponse	"Unauthorized"
+//	@Failure		404	{object}	models.ErrorResponse	"Match not found"
+//	@Failure		500	{object}	models.ErrorResponse	"Internal server error"
+//	@Security		Bearer
+//	@Router			/football/matches/{id} [delete]
 func (h *FootballHandler) DeleteMatch(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

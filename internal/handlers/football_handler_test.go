@@ -288,6 +288,14 @@ func (m *footballMock) GetEloRankings(_ time.Time, _ string, limit, offset int) 
 	return nil, nil
 }
 
+func (m *footballMock) GetTeamCachedRank(_ int, _ time.Time) (int, error) {
+	return 0, nil
+}
+
+func (m *footballMock) ListTournaments() ([]models.Tournament, error) {
+	return m.tournaments, nil
+}
+
 // ---------------------------------------------------------------------------
 // Router helpers
 // ---------------------------------------------------------------------------

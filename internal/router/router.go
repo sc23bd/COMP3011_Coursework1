@@ -14,15 +14,16 @@ package router
 
 import (
 	"database/sql"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
-	docs "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // New returns a configured *gin.Engine.
@@ -44,8 +45,12 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 	r.Use(middleware.CacheControl())
 	r.Use(gin.Recovery())
 
-	// Swagger documentation endpoint
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(docs.Handler))
+	// Swagger documentation endpoint - serve from local dist folder
+	const swaggerDist = "./docs/dist"
+	if _, err := os.Stat(swaggerDist); err == nil {
+		r.StaticFile("/swagger", filepath.Join(swaggerDist, "index.html"))
+		r.Static("/swagger/", swaggerDist)
+	}
 
 	// API v1 route group — versioned URI prefix (Uniform Interface principle).
 	v1 := r.Group("/api/v1")
@@ -72,6 +77,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.GET("/teams/:id/history", fh.GetTeamHistory)
 			football.GET("/teams/:id/elo", fh.GetTeamElo)
 			football.GET("/teams/:id/elo/timeline", fh.GetTeamEloTimeline)
+
+			football.GET("/tournaments", fh.ListTournaments)
 
 			football.GET("/matches", fh.ListMatches)
 			football.GET("/matches/:id", fh.GetMatch)
@@ -101,6 +108,25 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 
 			football.POST("/rankings/elo/recalculate", middleware.JWTAuth(jwtService), fh.RecalculateEloRankings)
 		}
+	}
+
+	// Serve the built frontend static files if the dist directory exists.
+	// In production (Docker), the frontend is built via the node:alpine stage
+	// and copied to ./frontend/dist alongside the server binary.
+	const frontendDist = "./frontend/dist"
+	if _, err := os.Stat(frontendDist); err == nil {
+		r.Static("/assets", filepath.Join(frontendDist, "assets"))
+		r.StaticFile("/vite.svg", filepath.Join(frontendDist, "vite.svg"))
+		// Catch-all: serve index.html for any non-API path to support
+		// client-side (React Router) navigation.
+		r.NoRoute(func(c *gin.Context) {
+			path := c.Request.URL.Path
+			if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/swagger/") {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+				return
+			}
+			c.File(filepath.Join(frontendDist, "index.html"))
+		})
 	}
 
 	return r
