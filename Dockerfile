@@ -14,8 +14,10 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
+RUN go install github.com/swaggo/swag/v2/cmd/swag@latest
 
 COPY . .
+RUN swag init -g cmd/server/main.go -o docs/dist --parseInternal
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./cmd/server/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o import_football_data ./scripts/import_football_data.go
 
@@ -27,8 +29,8 @@ WORKDIR /root/
 
 COPY --from=builder /app/server .
 COPY --from=builder /app/import_football_data .
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 COPY --from=builder /app/docs/dist ./docs/dist
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Download football dataset from Kaggle
 RUN curl -L -o football_data.zip -f \
