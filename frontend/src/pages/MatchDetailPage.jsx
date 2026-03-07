@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import {
   getMatch, getGoals, createGoal, deleteGoal,
-  getShootout, createShootout, deleteShootout, getTeams
+  getShootout, createShootout, deleteShootout
 } from "@/api/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Plus, Trash2, Target, Shield } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 
-function AddGoalDialog({ open, onClose, onSave, matchId, homeTeamId, homeName, awayTeamId, awayName }) {
+function AddGoalDialog({ open, onClose, onSave, homeTeamId, homeName, awayTeamId, awayName }) {
   const [form, setForm] = useState({ scorer: "", teamId: "", ownGoal: false, penalty: false })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -200,11 +200,6 @@ export default function MatchDetailPage() {
   if (error) return <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
   if (!match) return null
 
-  const homeGoals = goals.filter((g) => g.teamId === match.homeTeamId && !g.ownGoal)
-    .concat(goals.filter((g) => g.teamId === match.awayTeamId && g.ownGoal))
-  const awayGoals = goals.filter((g) => g.teamId === match.awayTeamId && !g.ownGoal)
-    .concat(goals.filter((g) => g.teamId === match.homeTeamId && g.ownGoal))
-
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3">
@@ -312,7 +307,6 @@ export default function MatchDetailPage() {
         open={addGoalOpen}
         onClose={() => setAddGoalOpen(false)}
         onSave={handleAddGoal}
-        matchId={id}
         homeTeamId={match.homeTeamId}
         homeName={match.homeTeam}
         awayTeamId={match.awayTeamId}

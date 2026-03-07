@@ -7,28 +7,28 @@ import { Users, Calendar, User, TrendingUp, ArrowRight } from "lucide-react"
 const sections = [
   {
     to: "/teams",
-    icon: Users,
+    Icon: Users,
     title: "Teams",
     description: "Browse, create, edit, and manage national football teams.",
     color: "text-blue-600 bg-blue-50",
   },
   {
     to: "/matches",
-    icon: Calendar,
+    Icon: Calendar,
     title: "Matches",
     description: "View match results, head-to-head comparisons, goals and shootouts.",
     color: "text-green-600 bg-green-50",
   },
   {
     to: "/players",
-    icon: User,
+    Icon: User,
     title: "Players",
     description: "Search goals scored by any player across all matches.",
     color: "text-purple-600 bg-purple-50",
   },
   {
     to: "/elo",
-    icon: TrendingUp,
+    Icon: TrendingUp,
     title: "ELO Rankings",
     description: "View global Elo ratings, team rankings, and historical timelines.",
     color: "text-orange-600 bg-orange-50",
@@ -46,7 +46,7 @@ export default function HomePage() {
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {sections.map(({ to, icon: Icon, title, description, color }) => (
+        {sections.map(({ to, Icon, title, description, color }) => (
           <Card
             key={to}
             className="cursor-pointer hover:shadow-md transition-shadow"

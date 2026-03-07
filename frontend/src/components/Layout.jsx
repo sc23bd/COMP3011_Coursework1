@@ -6,10 +6,10 @@ import { Users, Calendar, User, TrendingUp, LogOut, LogIn, Menu, X } from "lucid
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { to: "/teams", label: "Teams", icon: Users },
-  { to: "/matches", label: "Matches", icon: Calendar },
-  { to: "/players", label: "Players", icon: User },
-  { to: "/elo", label: "ELO", icon: TrendingUp },
+  { to: "/teams", label: "Teams", Icon: Users },
+  { to: "/matches", label: "Matches", Icon: Calendar },
+  { to: "/players", label: "Players", Icon: User },
+  { to: "/elo", label: "ELO", Icon: TrendingUp },
 ]
 
 export default function Layout({ children }) {
@@ -36,7 +36,7 @@ export default function Layout({ children }) {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1 flex-1">
-            {navItems.map(({ to, label, icon: Icon }) => (
+            {navItems.map(({ to, label, Icon }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -89,7 +89,7 @@ export default function Layout({ children }) {
         {/* Mobile menu panel */}
         {mobileOpen && (
           <div className="md:hidden border-t border-slate-100 bg-white px-4 py-3 space-y-1">
-            {navItems.map(({ to, label, icon: Icon }) => (
+            {navItems.map(({ to, label, Icon }) => (
               <NavLink
                 key={to}
                 to={to}

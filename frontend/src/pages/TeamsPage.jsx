@@ -59,21 +59,26 @@ function TeamDialog({ open, onClose, onSave, team }) {
 function TeamDetailDialog({ open, onClose, teamId }) {
   const [detail, setDetail] = useState(null)
   const [history, setHistory] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState("details")
 
   useEffect(() => {
     if (!open || !teamId) return
-    setLoading(true)
-    setTab("details")
+    let isMounted = true
     Promise.all([getTeam(teamId), getTeamHistory(teamId)])
       .then(([teamRes, histRes]) => {
-        setDetail(teamRes.data)
-        setHistory(histRes.data)
+        if (isMounted) {
+          setDetail(teamRes.data)
+          setHistory(histRes.data)
+        }
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
+    return () => {
+      isMounted = false
+      setDetail(null)
+      setHistory(null)
+    }
   }, [open, teamId])
+
+  const loading = open && !!teamId && !detail
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

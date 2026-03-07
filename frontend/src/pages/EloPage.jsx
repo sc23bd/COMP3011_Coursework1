@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { getEloRankings, getTeamElo, getTeamEloTimeline, getTeams, recalculateElo } from "@/api/client"
 import { Button } from "@/components/ui/button"
@@ -19,7 +18,6 @@ function RankBadge({ rank }) {
 
 export default function EloPage() {
   const { isAuthenticated } = useAuth()
-  const navigate = useNavigate()
 
   // Rankings tab
   const [rankings, setRankings] = useState([])
