@@ -28,7 +28,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
-    command: sh -c "./import_football_data && ./server"
+    command: sh -c "./import_football_data & ./server"
 
   db:
     image: postgres:18-alpine

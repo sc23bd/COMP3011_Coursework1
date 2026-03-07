@@ -28,6 +28,7 @@ WORKDIR /root/
 COPY --from=builder /app/server .
 COPY --from=builder /app/import_football_data .
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+COPY --from=builder /app/docs/dist ./docs/dist
 
 # Download football dataset from Kaggle
 RUN curl -L -o football_data.zip -f \

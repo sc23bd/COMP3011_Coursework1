@@ -20,13 +20,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/sc23bd/COMP3011_Coursework1/docs"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/auth"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/db/postgres"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/middleware"
-	docs "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // New returns a configured *gin.Engine.
@@ -48,8 +45,12 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 	r.Use(middleware.CacheControl())
 	r.Use(gin.Recovery())
 
-	// Swagger documentation endpoint
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(docs.Handler))
+	// Swagger documentation endpoint - serve from local dist folder
+	const swaggerDist = "./docs/dist"
+	if _, err := os.Stat(swaggerDist); err == nil {
+		r.StaticFile("/swagger", filepath.Join(swaggerDist, "index.html"))
+		r.Static("/swagger/", swaggerDist)
+	}
 
 	// API v1 route group — versioned URI prefix (Uniform Interface principle).
 	v1 := r.Group("/api/v1")
