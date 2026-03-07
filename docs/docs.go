@@ -222,6 +222,67 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a new match result (requires authentication)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Create a new match",
+                "parameters": [
+                    {
+                        "description": "Match details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateMatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Match created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MatchResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Match already exists",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/football/matches/{id}": {
@@ -252,6 +313,133 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid match ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Match not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Update an existing match record (requires authentication)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Update a match",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Match ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated match details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateMatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Match updated",
+                        "schema": {
+                            "$ref": "#/definitions/models.MatchResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Match not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Match already exists",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Delete a match by ID (requires authentication)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Delete a match",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Match ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Match deleted successfully"
+                    },
+                    "400": {
+                        "description": "Invalid match ID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1209,6 +1397,32 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/football/tournaments": {
+            "get": {
+                "description": "Get all football tournaments ordered by name",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tournaments"
+                ],
+                "summary": "List all tournaments",
+                "responses": {
+                    "200": {
+                        "description": "List of tournaments",
+                        "schema": {
+                            "$ref": "#/definitions/models.TournamentsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1400,6 +1614,49 @@ const docTemplate = `{
                     "minLength": 1
                 },
                 "teamId": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "models.CreateMatchRequest": {
+            "type": "object",
+            "required": [
+                "awayTeamId",
+                "date",
+                "homeTeamId",
+                "tournamentId"
+            ],
+            "properties": {
+                "awayScore": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "awayTeamId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "homeScore": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "homeTeamId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "neutral": {
+                    "type": "boolean"
+                },
+                "tournamentId": {
                     "type": "integer",
                     "minimum": 1
                 }
@@ -1704,6 +1961,74 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.Link"
                     }
+                }
+            }
+        },
+        "models.Tournament": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TournamentsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Tournament"
+                    }
+                }
+            }
+        },
+        "models.UpdateMatchRequest": {
+            "type": "object",
+            "required": [
+                "awayTeamId",
+                "date",
+                "homeTeamId",
+                "tournamentId"
+            ],
+            "properties": {
+                "awayScore": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "awayTeamId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "homeScore": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "homeTeamId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "neutral": {
+                    "type": "boolean"
+                },
+                "tournamentId": {
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         },
