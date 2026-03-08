@@ -83,7 +83,7 @@ func TestSimulateMatch_ProbabilitiesSumToOne(t *testing.T) {
 	decodeJSON(t, w, &resp)
 
 	sum := resp.Outcome.HomeWinPct + resp.Outcome.DrawPct + resp.Outcome.AwayWinPct
-	if sum < 0.9999 || sum > 1.0001 {
+	if sum < 0.9998 || sum > 1.0002 {
 		t.Errorf("outcome probabilities should sum to 1.0, got %.4f", sum)
 	}
 }

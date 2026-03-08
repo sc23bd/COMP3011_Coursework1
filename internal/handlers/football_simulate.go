@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"sync"
 	"time"
 
@@ -14,6 +12,7 @@ import (
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/simulator"
 )
+
 const simulateDateLayout = "2006-01-02"
 
 // concurrencyLimiter tracks concurrent simulation requests for rate limiting.
@@ -128,7 +127,7 @@ func (h *FootballHandler) SimulateMatch(c *gin.Context) {
 	} else {
 		// Cache miss: calculate Elos from scratch.
 		c.Header("X-Cache-Status", "miss")
-		
+
 		// Fetch all matches up to asOf for accurate Elo calculation.
 		// Note: We need ALL matches (teamID=0) because each team's Elo depends on
 		// the historical Elo of all their opponents.
@@ -223,18 +222,6 @@ func (h *FootballHandler) SimulateMatch(c *gin.Context) {
 			{Rel: "home-elo", Href: fmt.Sprintf("/api/v1/football/teams/%d/elo?date=%s", homeTeam.ID, dateStr), Method: http.MethodGet},
 			{Rel: "away-elo", Href: fmt.Sprintf("/api/v1/football/teams/%d/elo?date=%s", awayTeam.ID, dateStr), Method: http.MethodGet},
 		},
-	})
-}
-
-// mergeMatchResults combines two slices of MatchResult, deduplicating by MatchID.
-// It uses the slices package (Go 1.21+) to sort and compact the combined slice.
-func mergeMatchResults(a, b []elo.MatchResult) []elo.MatchResult {
-	merged := append(slices.Clone(a), b...)
-	slices.SortFunc(merged, func(x, y elo.MatchResult) int {
-		return cmp.Compare(x.MatchID, y.MatchID)
-	})
-	return slices.CompactFunc(merged, func(x, y elo.MatchResult) bool {
-		return x.MatchID == y.MatchID
 	})
 }
 

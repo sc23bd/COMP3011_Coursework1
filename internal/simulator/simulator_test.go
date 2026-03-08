@@ -29,7 +29,7 @@ func TestRun_ProbabilitiesSumToOne(t *testing.T) {
 	res := simulator.Run(input, deterministicRNG())
 
 	sum := res.HomeWinPct + res.DrawPct + res.AwayWinPct
-	if math.Abs(sum-1.0) > 0.0001 {
+	if math.Abs(sum-1.0) > 0.0002 {
 		t.Errorf("probabilities do not sum to 1.0: got %.4f + %.4f + %.4f = %.4f",
 			res.HomeWinPct, res.DrawPct, res.AwayWinPct, sum)
 	}

@@ -92,7 +92,7 @@ type Input struct {
 	// back to DefaultSimulations; values > MaxSimulations are capped.
 	Simulations int
 	// HomeAdvantage is the Elo home-ground bonus used in the expected-result
-	// formula.  Pass 0 to use the built-in default (100 points).
+	// formula.  A value of 0 applies no additional Elo bonus beyond any venue.
 	HomeAdvantage float64
 }
 

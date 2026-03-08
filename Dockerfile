@@ -14,7 +14,7 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
-RUN go install github.com/swaggo/swag/v2/cmd/swag@latest
+RUN go install github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc5
 
 COPY . .
 RUN swag init -g cmd/server/main.go -o docs/dist --parseInternal -ot json
