@@ -113,17 +113,28 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 		return
 	}
 
+	// Fetch team-specific matches to derive accurate count and delta metadata.
+	// Using the global list for Elo computation keeps opponent ratings correct;
+	// using the team list here prevents inflating MatchesConsidered with every
+	// other team's matches and ensures the delta reflects the team's own last game.
+	teamMatches, err := h.repo.GetMatchesChronological(id, asOf)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
 	ratings := elo.CalculateUntil(matches, asOf, cfg)
 	currentElo := ratings[id]
 	if currentElo == 0 {
 		currentElo = cfg.DefaultRating
 	}
 
-	// Compute previous rating (all matches before last match date) for delta.
+	// Compute delta: change since the team's penultimate match.
+	// Use the global match list so that opponents' ratings stay accurate.
 	var prevElo float64
-	if len(matches) > 0 {
-		prevMatches := matches[:len(matches)-1]
-		prevRatings := elo.Calculate(prevMatches, cfg)
+	if len(teamMatches) >= 2 {
+		prevDate := teamMatches[len(teamMatches)-2].Date
+		prevRatings := elo.CalculateUntil(matches, prevDate, cfg)
 		prevElo = prevRatings[id]
 		if prevElo == 0 {
 			prevElo = cfg.DefaultRating
@@ -148,7 +159,7 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 		Elo:               roundElo(currentElo),
 		Rank:              cachedRank,
 		ChangeFromPrev:    roundElo(currentElo - prevElo),
-		MatchesConsidered: len(matches),
+		MatchesConsidered: len(teamMatches),
 		Methodology: elo.Methodology{
 			KFactor:          cfg.DefaultKFactor,
 			HomeAdvantage:    cfg.HomeAdvantage,
