@@ -107,6 +107,8 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 			football.DELETE("/matches/:id/shootout", middleware.JWTAuth(jwtService), fh.DeleteShootout)
 
 			football.POST("/rankings/elo/recalculate", middleware.JWTAuth(jwtService), fh.RecalculateEloRankings)
+
+			football.POST("/matches/simulate", middleware.JWTAuth(jwtService), fh.SimulateMatch)
 		}
 	}
 

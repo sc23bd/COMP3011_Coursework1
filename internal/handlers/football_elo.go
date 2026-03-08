@@ -77,8 +77,47 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 
 	cfg := elo.DefaultConfig()
 
-	// Fetch all matches for this team up to the requested date.
-	matches, err := h.repo.GetMatchesChronological(id, asOf)
+	// Try to use cached Elo data first.
+	cachedElo, cachedRank, cachedMatches, cacheErr := h.repo.GetTeamCachedElo(id, asOf)
+	if cacheErr == nil {
+		// Cache hit: use cached data.
+		c.Header("X-Cache-Status", "hit")
+		c.Header("X-Elo-Computed-At", time.Now().UTC().Format(time.RFC3339))
+		c.JSON(http.StatusOK, elo.Rating{
+			TeamID:            team.ID,
+			TeamName:          team.Name,
+			Date:              asOf,
+			Elo:               roundElo(cachedElo),
+			Rank:              cachedRank,
+			ChangeFromPrev:    0,
+			MatchesConsidered: cachedMatches,
+			Methodology: elo.Methodology{
+				KFactor:          cfg.DefaultKFactor,
+				HomeAdvantage:    cfg.HomeAdvantage,
+				WeightMultiplier: 1.0,
+				FormulaReference: cfg.FormulaRef(),
+			},
+			Links: eloLinks(id, dateStr),
+		})
+		return
+	}
+
+	// Cache miss: calculate from scratch.
+	c.Header("X-Cache-Status", "miss")
+
+	// Fetch all matches up to the requested date to ensure accurate ELO calculation.
+	// ELO ratings depend on opponent ratings, which depend on all their matches.
+	matches, err := h.repo.GetMatchesChronological(0, asOf)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	// Fetch team-specific matches to derive accurate count and delta metadata.
+	// Using the global list for Elo computation keeps opponent ratings correct;
+	// using the team list here prevents inflating MatchesConsidered with every
+	// other team's matches and ensures the delta reflects the team's own last game.
+	teamMatches, err := h.repo.GetMatchesChronological(id, asOf)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
 		return
@@ -90,11 +129,12 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 		currentElo = cfg.DefaultRating
 	}
 
-	// Compute previous rating (all matches before last match date) for delta.
+	// Compute delta: change since the team's penultimate match.
+	// Use the global match list so that opponents' ratings stay accurate.
 	var prevElo float64
-	if len(matches) > 0 {
-		prevMatches := matches[:len(matches)-1]
-		prevRatings := elo.Calculate(prevMatches, cfg)
+	if len(teamMatches) >= 2 {
+		prevDate := teamMatches[len(teamMatches)-2].Date
+		prevRatings := elo.CalculateUntil(matches, prevDate, cfg)
 		prevElo = prevRatings[id]
 		if prevElo == 0 {
 			prevElo = cfg.DefaultRating
@@ -105,7 +145,7 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 
 	// Look up the most-recently cached global rank for this team.
 	// Returns 0 if no rank has been cached yet (recalculation not yet run).
-	cachedRank, err := h.repo.GetTeamCachedRank(id, asOf)
+	cachedRank, err = h.repo.GetTeamCachedRank(id, asOf)
 	if err != nil {
 		// Non-fatal: proceed without a rank rather than failing the whole request.
 		cachedRank = 0
@@ -119,7 +159,7 @@ func (h *FootballHandler) GetTeamElo(c *gin.Context) {
 		Elo:               roundElo(currentElo),
 		Rank:              cachedRank,
 		ChangeFromPrev:    roundElo(currentElo - prevElo),
-		MatchesConsidered: len(matches),
+		MatchesConsidered: len(teamMatches),
 		Methodology: elo.Methodology{
 			KFactor:          cfg.DefaultKFactor,
 			HomeAdvantage:    cfg.HomeAdvantage,
@@ -185,8 +225,18 @@ func (h *FootballHandler) GetTeamEloTimeline(c *gin.Context) {
 
 	cfg := elo.DefaultConfig()
 
-	// Fetch all matches for this team up to endDate.
-	matches, err := h.repo.GetMatchesChronological(id, endDate)
+	// Check if cached data exists (for informational header only).
+	_, _, _, cacheErr := h.repo.GetTeamCachedElo(id, endDate)
+	if cacheErr == nil {
+		c.Header("X-Cache-Status", "exists-but-unused")
+	} else {
+		c.Header("X-Cache-Status", "miss")
+	}
+
+	// Fetch all matches up to endDate to ensure accurate ELO calculation.
+	// ELO ratings depend on opponent ratings, which depend on all their matches.
+	// Note: Timeline requires full match-by-match calculation; cache cannot be used.
+	matches, err := h.repo.GetMatchesChronological(0, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
 		return

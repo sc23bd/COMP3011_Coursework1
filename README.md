@@ -46,9 +46,11 @@ A PostgreSQL database is **required** to run the server.
 │   │   ├── football_teams.go        # Teams CRUD handlers
 │   │   ├── football_matches.go      # Matches CRUD handlers
 │   │   ├── football_goals.go        # Goals & Shootouts handlers
+│   │   ├── football_simulate.go     # Match outcome simulator handler
 │   │   ├── football_teams_test.go   # Teams handler tests
 │   │   ├── football_matches_test.go # Matches handler tests
-│   │   └── football_goals_test.go   # Goals & Shootouts handler tests
+│   │   ├── football_goals_test.go   # Goals & Shootouts handler tests
+│   │   └── football_simulate_test.go# Simulate endpoint integration tests
 │   ├── middleware/
 │   │   ├── auth.go                  # JWT authentication middleware
 │   │   └── middleware.go            # RequestID, Logger, CacheControl, NoSessionState
@@ -56,11 +58,15 @@ A PostgreSQL database is **required** to run the server.
 │   │   ├── common.go                # Shared types: Link, ErrorResponse
 │   │   ├── errors.go                # Shared sentinel errors (ErrNotFound, ErrConflict)
 │   │   ├── match.go                 # Match, Goal, Shootout domain models
+│   │   ├── simulate.go              # SimulateRequest / SimulateResponse models
 │   │   ├── team.go                  # Team, FormerName domain models
 │   │   ├── tournament.go            # Tournament domain model
 │   │   └── user.go                  # User domain model + auth request/response types
-│   └── router/
-│       └── router.go                # Wires middleware, repositories, and routes together
+│   ├── router/
+│   │   └── router.go                # Wires middleware, repositories, and routes together
+│   └── simulator/
+│       ├── simulator.go             # Monte Carlo Poisson simulation engine
+│       └── simulator_test.go        # Unit tests for the simulation engine
 ├── migrations/
 │   ├── 001_initial_schema.sql       # Idempotent DDL — users table
 │   ├── 002_football_schema.sql      # Idempotent DDL — football tables + indexes
@@ -392,6 +398,76 @@ Base path: `/api/v1/football`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/players/:name/goals` | — | Get all goals scored by a player (exact name match) |
+
+### Football — Match Outcome Simulator
+
+Monte Carlo simulation engine for predicting the probable outcome of a match
+before it is played.  Uses the team's current Elo ratings and historical
+scoring averages to derive Poisson rate parameters, then runs up to 10 000
+iterations to estimate win/draw/loss probabilities, an expected scoreline, an
+upset probability, and 95 % Wilson-score confidence intervals.
+
+> **Authentication required** — this endpoint is rate-limited (max 5 concurrent
+> requests) due to its computational cost.
+
+| Method | Path | Auth | Description | Body |
+|--------|------|------|-------------|------|
+| `POST` | `/matches/simulate` | JWT | Run a Monte Carlo simulation for a potential match | JSON body (see below) |
+
+**Request body:**
+
+```json
+{
+  "homeTeamId":  45,
+  "awayTeamId":  32,
+  "date":        "2024-07-14",
+  "venue":       "neutral",
+  "simulations": 1000
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `homeTeamId` | integer | ✅ | ID of the home team |
+| `awayTeamId` | integer | ✅ | ID of the away team (must differ from home) |
+| `date` | string (`YYYY-MM-DD`) | — | Historical date for Elo derivation; defaults to today |
+| `venue` | string | — | `"home"` (first team at home), `"away"` (first team away), `"neutral"` (default) |
+| `simulations` | integer | — | Iterations to run (default 1 000, max 10 000) |
+
+**Response example:**
+
+```json
+{
+  "homeTeam": "Germany",
+  "awayTeam": "Argentina",
+  "venue": "neutral",
+  "asOf": "2024-07-14",
+  "simulations": 1000,
+  "homeElo": 2012.50,
+  "awayElo": 1987.30,
+  "outcome": {
+    "homeWinPct": 0.4210,
+    "drawPct":    0.2680,
+    "awayWinPct": 0.3110,
+    "homeWinCI":  [0.3910, 0.4513],
+    "drawCI":     [0.2403, 0.2960],
+    "awayWinCI":  [0.2822, 0.3402]
+  },
+  "expectedScore": { "homeGoals": 1.43, "awayGoals": 1.21 },
+  "upsetProbability": 0.3110,
+  "links": [
+    {"rel": "self",      "href": "/api/v1/football/matches/simulate",         "method": "POST"},
+    {"rel": "home-team", "href": "/api/v1/football/teams/45",                 "method": "GET"},
+    {"rel": "away-team", "href": "/api/v1/football/teams/32",                 "method": "GET"},
+    {"rel": "home-elo",  "href": "/api/v1/football/teams/45/elo?date=2024-07-14", "method": "GET"},
+    {"rel": "away-elo",  "href": "/api/v1/football/teams/32/elo?date=2024-07-14", "method": "GET"}
+  ]
+}
+```
+
+**Methodology note** — see [`docs/simulation-methodology.md`](docs/simulation-methodology.md) for the full derivation.
+
+---
 
 ### Football — Elo Ratings
 

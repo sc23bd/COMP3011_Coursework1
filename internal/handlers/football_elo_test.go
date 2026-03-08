@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	elomodels "github.com/sc23bd/COMP3011_Coursework1/internal/elo"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 

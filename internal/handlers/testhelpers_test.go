@@ -43,7 +43,10 @@ func doRequestWithHeader(r *gin.Engine, method, path string, body interface{}, h
 }
 
 // assertStatus is a convenience helper to check the HTTP status code.
-func assertStatus(t interface{ Helper(); Fatalf(string, ...interface{}) }, w *httptest.ResponseRecorder, want int) {
+func assertStatus(t interface {
+	Helper()
+	Fatalf(string, ...interface{})
+}, w *httptest.ResponseRecorder, want int) {
 	t.Helper()
 	if w.Code != want {
 		t.Fatalf("expected status %d, got %d: %s", want, w.Code, w.Body.String())
@@ -51,7 +54,10 @@ func assertStatus(t interface{ Helper(); Fatalf(string, ...interface{}) }, w *ht
 }
 
 // decodeJSON decodes the response body into dst.
-func decodeJSON(t interface{ Helper(); Fatalf(string, ...interface{}) }, w *httptest.ResponseRecorder, dst interface{}) {
+func decodeJSON(t interface {
+	Helper()
+	Fatalf(string, ...interface{})
+}, w *httptest.ResponseRecorder, dst interface{}) {
 	t.Helper()
 	if err := json.NewDecoder(w.Body).Decode(dst); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
@@ -59,7 +65,10 @@ func decodeJSON(t interface{ Helper(); Fatalf(string, ...interface{}) }, w *http
 }
 
 // checkHeader verifies that a response header is non-empty.
-func checkHeader(t interface{ Helper(); Fatalf(string, ...interface{}) }, w *httptest.ResponseRecorder, name string) {
+func checkHeader(t interface {
+	Helper()
+	Fatalf(string, ...interface{})
+}, w *httptest.ResponseRecorder, name string) {
 	t.Helper()
 	if w.Header().Get(name) == "" {
 		t.Fatalf("expected response header %q to be set", name)
@@ -67,7 +76,10 @@ func checkHeader(t interface{ Helper(); Fatalf(string, ...interface{}) }, w *htt
 }
 
 // notFound sends a GET request and asserts a 404 response.
-func notFound(t interface{ Helper(); Fatalf(string, ...interface{}) }, r *gin.Engine, path string) {
+func notFound(t interface {
+	Helper()
+	Fatalf(string, ...interface{})
+}, r *gin.Engine, path string) {
 	t.Helper()
 	w := doRequest(r, http.MethodGet, path, nil)
 	assertStatus(t, w, http.StatusNotFound)

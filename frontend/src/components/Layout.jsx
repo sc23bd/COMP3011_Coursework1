@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
-import { Users, Calendar, User, TrendingUp, LogOut, LogIn, Menu, X } from "lucide-react"
+import { Users, Calendar, User, TrendingUp, LogOut, LogIn, Menu, X, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/matches", label: "Matches", Icon: Calendar },
   { to: "/players", label: "Players", Icon: User },
   { to: "/elo", label: "ELO", Icon: TrendingUp },
+  { to: "/simulate", label: "Simulate", Icon: Zap },
 ]
 
 export default function Layout({ children }) {

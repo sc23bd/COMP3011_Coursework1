@@ -271,6 +271,69 @@
                 }
             }
         },
+        "/football/matches/simulate": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Runs a Monte Carlo simulation for a potential match result using historical Elo ratings and scoring patterns.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Simulate a match outcome",
+                "parameters": [
+                    {
+                        "description": "Simulation parameters",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SimulateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Simulation result",
+                        "schema": {
+                            "$ref": "#/definitions/models.SimulateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many concurrent simulation requests",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/football/matches/{id}": {
             "get": {
                 "description": "Get detailed information about a specific match",
@@ -1681,6 +1744,17 @@
                 }
             }
         },
+        "models.ExpectedScore": {
+            "type": "object",
+            "properties": {
+                "awayGoals": {
+                    "type": "number"
+                },
+                "homeGoals": {
+                    "type": "number"
+                }
+            }
+        },
         "models.FormerName": {
             "type": "object",
             "properties": {
@@ -1910,6 +1984,110 @@
                 },
                 "winnerId": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.SimulateRequest": {
+            "type": "object",
+            "required": [
+                "awayTeamId",
+                "homeTeamId"
+            ],
+            "properties": {
+                "awayTeamId": {
+                    "description": "AwayTeamID is the ID of the team designated as \"away\" for the simulation.",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "date": {
+                    "description": "Date is an optional point-in-time date (YYYY-MM-DD) used to derive Elo\nratings from historical data.  Defaults to today when omitted.",
+                    "type": "string"
+                },
+                "homeTeamId": {
+                    "description": "HomeTeamID is the ID of the team designated as \"home\" for the simulation.",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "simulations": {
+                    "description": "Simulations is the number of Monte Carlo iterations to run.  Values ≤ 0\ndefault to 1 000; values \u003e 10 000 are capped at 10 000.",
+                    "type": "integer"
+                },
+                "venue": {
+                    "description": "Venue describes where the match is to be played: \"home\" (home team's\nground), \"away\" (away team's ground / home team away), or \"neutral\".\nDefaults to \"neutral\" when omitted or invalid.",
+                    "type": "string"
+                }
+            }
+        },
+        "models.SimulateResponse": {
+            "type": "object",
+            "properties": {
+                "asOf": {
+                    "type": "string"
+                },
+                "awayElo": {
+                    "type": "number"
+                },
+                "awayTeam": {
+                    "type": "string"
+                },
+                "expectedScore": {
+                    "$ref": "#/definitions/models.ExpectedScore"
+                },
+                "homeElo": {
+                    "type": "number"
+                },
+                "homeTeam": {
+                    "type": "string"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Link"
+                    }
+                },
+                "outcome": {
+                    "$ref": "#/definitions/models.SimulationOutcome"
+                },
+                "simulations": {
+                    "type": "integer"
+                },
+                "upsetProbability": {
+                    "type": "number"
+                },
+                "venue": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SimulationOutcome": {
+            "type": "object",
+            "properties": {
+                "awayWinCI": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "awayWinPct": {
+                    "type": "number"
+                },
+                "drawCI": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "drawPct": {
+                    "type": "number"
+                },
+                "homeWinCI": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "homeWinPct": {
+                    "type": "number"
                 }
             }
         },

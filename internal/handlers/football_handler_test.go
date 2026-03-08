@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	elomodels "github.com/sc23bd/COMP3011_Coursework1/internal/elo"
+	"github.com/sc23bd/COMP3011_Coursework1/internal/handlers"
 	"github.com/sc23bd/COMP3011_Coursework1/internal/models"
 )
 
@@ -286,6 +287,10 @@ func (m *footballMock) SaveEloSnapshot(_ int, _ time.Time, _ float64, _ int, _ i
 
 func (m *footballMock) GetEloRankings(_ time.Time, _ string, limit, offset int) ([]elomodels.RankingEntry, error) {
 	return nil, nil
+}
+
+func (m *footballMock) GetTeamCachedElo(_ int, _ time.Time) (rating float64, rank int, matchesPlayed int, err error) {
+	return 0, 0, 0, sql.ErrNoRows
 }
 
 func (m *footballMock) GetTeamCachedRank(_ int, _ time.Time) (int, error) {
