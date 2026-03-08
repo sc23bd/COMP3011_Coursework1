@@ -49,6 +49,28 @@ func (r *FootballRepo) GetMatchesChronological(teamID int, endDate time.Time) ([
 	return scanMatchResults(sqlRows)
 }
 
+// GetTeamCachedElo returns the cached Elo rating and rank for a team on or
+// before asOf. Returns sql.ErrNoRows if no cached entry exists.
+func (r *FootballRepo) GetTeamCachedElo(teamID int, asOf time.Time) (rating float64, rank int, matchesPlayed int, err error) {
+	const q = `
+		SELECT elo_rating, global_rank, matches_played
+		FROM football_elo_cache
+		WHERE team_id = $1
+		  AND as_of_date <= $2
+		ORDER BY as_of_date DESC
+		LIMIT 1`
+
+	var rankPtr *int
+	err = r.db.QueryRow(q, teamID, asOf).Scan(&rating, &rankPtr, &matchesPlayed)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if rankPtr != nil {
+		rank = *rankPtr
+	}
+	return rating, rank, matchesPlayed, nil
+}
+
 // GetTeamCachedRank returns the most-recently cached global rank for a team on or
 // before asOf. Returns 0 if no cached rank exists.
 func (r *FootballRepo) GetTeamCachedRank(teamID int, asOf time.Time) (int, error) {

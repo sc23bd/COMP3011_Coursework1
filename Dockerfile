@@ -17,7 +17,7 @@ RUN go mod download
 RUN go install github.com/swaggo/swag/v2/cmd/swag@latest
 
 COPY . .
-RUN swag init -g cmd/server/main.go -o docs/dist --parseInternal
+RUN swag init -g cmd/server/main.go -o docs/dist --parseInternal -ot json
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server ./cmd/server/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o import_football_data ./scripts/import_football_data.go
 

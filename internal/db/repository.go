@@ -58,6 +58,9 @@ type FootballRepository interface {
 	// GetEloRankings returns a paginated global Elo ranking snapshot.
 	// region is an optional filter (empty = all regions); limit/offset control pagination.
 	GetEloRankings(asOf time.Time, region string, limit, offset int) ([]elo.RankingEntry, error)
+	// GetTeamCachedElo returns the cached Elo rating and rank for a team on or
+	// before asOf. Returns sql.ErrNoRows if no cached entry exists.
+	GetTeamCachedElo(teamID int, asOf time.Time) (rating float64, rank int, matchesPlayed int, err error)
 	// GetTeamCachedRank returns the most-recently cached global rank for a team
 	// on or before asOf. Returns 0 if no cached rank exists.
 	GetTeamCachedRank(teamID int, asOf time.Time) (int, error)

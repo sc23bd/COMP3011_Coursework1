@@ -118,7 +118,40 @@ func (h *FootballHandler) SimulateMatch(c *gin.Context) {
 
 	cfg := elo.DefaultConfig()
 
-	// Fetch match history for both teams to compute Elo and goal rates.
+	// Try to use cached Elo ratings for both teams.
+	homeElo, _, _, homeErr := h.repo.GetTeamCachedElo(homeTeam.ID, asOf)
+	awayElo, _, _, awayErr := h.repo.GetTeamCachedElo(awayTeam.ID, asOf)
+
+	cacheHit := (homeErr == nil && awayErr == nil)
+	if cacheHit {
+		c.Header("X-Cache-Status", "hit")
+	} else {
+		// Cache miss: calculate Elos from scratch.
+		c.Header("X-Cache-Status", "miss")
+		
+		// Fetch all matches up to asOf for accurate Elo calculation.
+		// Note: We need ALL matches (teamID=0) because each team's Elo depends on
+		// the historical Elo of all their opponents.
+		allMatches, err := h.repo.GetMatchesChronological(0, asOf)
+		if err != nil {
+			c.Header("Cache-Control", "no-store")
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
+			return
+		}
+
+		ratings := elo.CalculateUntil(allMatches, asOf, cfg)
+		homeElo = ratings[homeTeam.ID]
+		awayElo = ratings[awayTeam.ID]
+	}
+
+	if homeElo == 0 {
+		homeElo = cfg.DefaultRating
+	}
+	if awayElo == 0 {
+		awayElo = cfg.DefaultRating
+	}
+
+	// Fetch individual team matches for goal rate calculation.
 	homeMatches, err := h.repo.GetMatchesChronological(homeTeam.ID, asOf)
 	if err != nil {
 		c.Header("Cache-Control", "no-store")
@@ -131,19 +164,6 @@ func (h *FootballHandler) SimulateMatch(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "internal server error"})
 		return
-	}
-
-	// Combine both teams' matches to compute a shared Elo snapshot.
-	allMatches := mergeMatchResults(homeMatches, awayMatches)
-	ratings := elo.CalculateUntil(allMatches, asOf, cfg)
-
-	homeElo := ratings[homeTeam.ID]
-	if homeElo == 0 {
-		homeElo = cfg.DefaultRating
-	}
-	awayElo := ratings[awayTeam.ID]
-	if awayElo == 0 {
-		awayElo = cfg.DefaultRating
 	}
 
 	// Compute historical average goals scored per game for each team.

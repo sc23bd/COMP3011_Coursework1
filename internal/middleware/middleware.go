@@ -32,9 +32,13 @@ func RequestID() gin.HandlerFunc {
 //
 //   - Safe, idempotent GET/HEAD responses are marked as cacheable for 60 s.
 //   - All other methods are marked no-store to prevent stale mutations.
+//   - If a handler has already set Cache-Control, it is not overridden.
 func CacheControl() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
+		if c.Writer.Header().Get("Cache-Control") != "" {
+			return
+		}
 		if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead {
 			c.Header("Cache-Control", "public, max-age=60")
 		} else {

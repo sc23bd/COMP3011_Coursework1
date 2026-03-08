@@ -288,6 +288,10 @@ func (m *footballMock) GetEloRankings(_ time.Time, _ string, limit, offset int) 
 	return nil, nil
 }
 
+func (m *footballMock) GetTeamCachedElo(_ int, _ time.Time) (rating float64, rank int, matchesPlayed int, err error) {
+	return 0, 0, 0, models.ErrNotFound
+}
+
 func (m *footballMock) GetTeamCachedRank(_ int, _ time.Time) (int, error) {
 	return 0, nil
 }
