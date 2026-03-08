@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -205,22 +207,15 @@ func (h *FootballHandler) SimulateMatch(c *gin.Context) {
 }
 
 // mergeMatchResults combines two slices of MatchResult, deduplicating by MatchID.
+// It uses the slices package (Go 1.21+) to sort and compact the combined slice.
 func mergeMatchResults(a, b []elo.MatchResult) []elo.MatchResult {
-	seen := make(map[int]struct{}, len(a)+len(b))
-	merged := make([]elo.MatchResult, 0, len(a)+len(b))
-	for _, m := range a {
-		if _, ok := seen[m.MatchID]; !ok {
-			seen[m.MatchID] = struct{}{}
-			merged = append(merged, m)
-		}
-	}
-	for _, m := range b {
-		if _, ok := seen[m.MatchID]; !ok {
-			seen[m.MatchID] = struct{}{}
-			merged = append(merged, m)
-		}
-	}
-	return merged
+	merged := append(slices.Clone(a), b...)
+	slices.SortFunc(merged, func(x, y elo.MatchResult) int {
+		return cmp.Compare(x.MatchID, y.MatchID)
+	})
+	return slices.CompactFunc(merged, func(x, y elo.MatchResult) bool {
+		return x.MatchID == y.MatchID
+	})
 }
 
 // avgGoalsScored returns the average number of goals scored per game by teamID
