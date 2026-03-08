@@ -9,6 +9,7 @@ import MatchesPage from "@/pages/MatchesPage"
 import MatchDetailPage from "@/pages/MatchDetailPage"
 import PlayersPage from "@/pages/PlayersPage"
 import EloPage from "@/pages/EloPage"
+import SimulatePage from "@/pages/SimulatePage"
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
                   <Route path="/matches/:id" element={<MatchDetailPage />} />
                   <Route path="/players" element={<PlayersPage />} />
                   <Route path="/elo" element={<EloPage />} />
+                  <Route path="/simulate" element={<SimulatePage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Layout>

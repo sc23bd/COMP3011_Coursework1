@@ -59,4 +59,7 @@ export const getTeamElo = (id, params) => api.get(`/football/teams/${id}/elo`, {
 export const getTeamEloTimeline = (id, params) =>
   api.get(`/football/teams/${id}/elo/timeline`, { params })
 
+// Simulate
+export const simulateMatch = (data) => api.post("/football/matches/simulate", data)
+
 export default api
