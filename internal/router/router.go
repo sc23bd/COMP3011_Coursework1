@@ -117,8 +117,16 @@ func New(jwtSecret string, db *sql.DB) *gin.Engine {
 	// and copied to ./frontend/dist alongside the server binary.
 	const frontendDist = "./frontend/dist"
 	if _, err := os.Stat(frontendDist); err == nil {
+		// Serve static assets and public files
 		r.Static("/assets", filepath.Join(frontendDist, "assets"))
 		r.StaticFile("/vite.svg", filepath.Join(frontendDist, "vite.svg"))
+		r.StaticFile("/favicon.ico", filepath.Join(frontendDist, "favicon.ico"))
+		r.StaticFile("/favicon-16x16.png", filepath.Join(frontendDist, "favicon-16x16.png"))
+		r.StaticFile("/favicon-32x32.png", filepath.Join(frontendDist, "favicon-32x32.png"))
+		r.StaticFile("/apple-touch-icon.png", filepath.Join(frontendDist, "apple-touch-icon.png"))
+		r.StaticFile("/android-chrome-192x192.png", filepath.Join(frontendDist, "android-chrome-192x192.png"))
+		r.StaticFile("/android-chrome-512x512.png", filepath.Join(frontendDist, "android-chrome-512x512.png"))
+		r.StaticFile("/site.webmanifest", filepath.Join(frontendDist, "site.webmanifest"))
 		// Catch-all: serve index.html for any non-API path to support
 		// client-side (React Router) navigation.
 		r.NoRoute(func(c *gin.Context) {

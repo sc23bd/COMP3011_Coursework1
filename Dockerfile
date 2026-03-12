@@ -31,10 +31,12 @@ COPY --from=builder /app/server .
 COPY --from=builder /app/import_football_data .
 COPY --from=builder /app/docs/dist ./docs/dist
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+COPY --from=builder /app/start.sh .
 
 # Download football dataset from Kaggle
 RUN curl -L -o football_data.zip -f \
     "https://www.kaggle.com/api/v1/datasets/download/martj42/international-football-results-from-1872-to-2017"
 
 EXPOSE 8080
-CMD ["./server"]
+RUN chmod +x start.sh
+CMD ["./start.sh"]
